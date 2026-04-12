@@ -1,5 +1,5 @@
 ---
-name: skill-picker
+name: hams-skill-picker
 description: 현재 상황에서 최적의 스킬 추천 (프로젝트 맥락 기반)
 dispatch: subagent
 subagent_type: general-purpose
@@ -34,7 +34,7 @@ model: haiku
 # 예: "새 기능 개발 시작하는데 뭐부터?"
 # 예: "코드 리뷰해야 하는데 어떻게?"
 
-hams:skill-picker --context "현재 상황 설명"
+hams-skill-picker --context "현재 상황 설명"
 ```
 
 ## 추천 결과
@@ -70,4 +70,4 @@ hams:skill-picker --context "현재 상황 설명"
 
 ---
 
-**Tip:** "이런 상황에는 뭘 쓸까?" 하고 생각날 때마다 `/hams:skill-picker`를 쓰세요!
+**Tip:** "이런 상황에는 뭘 쓸까?" 하고 생각날 때마다 `/hams-skill-picker`를 쓰세요!

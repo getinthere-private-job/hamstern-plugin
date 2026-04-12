@@ -1,5 +1,5 @@
 ---
-name: dashboard
+name: hams-dashboard
 description: Hamstern 대시보드 웹 UI 실행 (Decisions, History, Recommendations)
 ---
 
@@ -19,7 +19,7 @@ hamstern 프로젝트 관리 대시보드를 웹 브라우저에서 엽니다.
 ## 동작
 
 ```bash
-/hams:dashboard [--port <번호>] [--no-open]
+/hams-dashboard [--port <번호>] [--no-open]
 ```
 
 **기본 포트:** 7777
@@ -29,13 +29,13 @@ hamstern 프로젝트 관리 대시보드를 웹 브라우저에서 엽니다.
 
 ```bash
 # 기본 포트(7777)로 실행, 브라우저 자동 열기
-/hams:dashboard
+/hams-dashboard
 
 # 커스텀 포트
-/hams:dashboard --port 8080
+/hams-dashboard --port 8080
 
 # 브라우저 안 열고 HTTP 서버만 시작
-/hams:dashboard --no-open
+/hams-dashboard --no-open
 ```
 
 ## 접근 경로

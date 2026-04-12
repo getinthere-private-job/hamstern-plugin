@@ -1,5 +1,5 @@
 ---
-name: audit-decisions
+name: hams-audit-decisions
 description: 과거 결정사항의 타당성 재검토 및 폐기 검증
 ---
 
@@ -21,7 +21,7 @@ description: 과거 결정사항의 타당성 재검토 및 폐기 검증
 ## 사용 방법
 
 ```bash
-/hams:audit-decisions
+/hams-audit-decisions
 ```
 
 옵션 없음 — 현재 프로젝트의 모든 결정사항 검토

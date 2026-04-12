@@ -1,5 +1,5 @@
 ---
-name: registry-collector
+name: hams-registry-collector
 description: 전역 스킬 레지스트리 수집 (GitHub, MCP)
 ---
 
@@ -7,12 +7,12 @@ description: 전역 스킬 레지스트리 수집 (GitHub, MCP)
 
 GitHub과 MCP에서 스킬들을 수집하여 `~/.hamstern/skills-registry.json`을 생성합니다.
 
-이 데이터는 `/hams:skill-picker`에서 스킬 추천 시 참고됩니다.
+이 데이터는 `/hams-skill-picker`에서 스킬 추천 시 참고됩니다.
 
 ## 동작
 
 ```bash
-/hams:registry-collector [--force]
+/hams-registry-collector [--force]
 ```
 
 **옵션:**
@@ -141,7 +141,7 @@ recency_boost:
 
 ```bash
 # ~/.hamstern/skills-registry.json 생성
-/hams:registry-collector
+/hams-registry-collector
 
 # 결과
 ✅ Collected 120 skills
@@ -156,7 +156,7 @@ Saved to: ~/.hamstern/skills-registry.json
 ### 2. 정기 업데이트 (주 1회)
 
 ```bash
-/hams:registry-collector --force
+/hams-registry-collector --force
 
 ✅ Updated registry
   ├─ New: 3 skills
@@ -164,7 +164,7 @@ Saved to: ~/.hamstern/skills-registry.json
   └─ Removed: 1 skill
 ```
 
-### 3. /hams:skill-picker에서 활용
+### 3. /hams-skill-picker에서 활용
 
 skill-picker가 registry를 읽어서:
 - 설치된 스킬 vs 전체 스킬 비교
