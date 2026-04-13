@@ -293,7 +293,7 @@ git worktree remove {WORKTREE_DIR}
 🔗 파일: posts/{id}.html
 📅 작성일: 2026-04-11
 
-🌐 블로그: https://codingspecialist.github.io/hamster-diary/
+🌐 블로그: {PAGES_URL}
 ⏱️  예상 반영 시간: 1분 내 (GitHub Actions 자동 배포)
 ```
 
@@ -357,6 +357,19 @@ git worktree remove {WORKTREE_DIR}
 
 ## 에러 처리
 
+### 설정 파일 오류
+
+```
+❌ 설정 파일 없음
+  ~/.claude/hams-diary.json 이 존재하지 않습니다.
+  /hams-diary --set-repo {URL} 로 먼저 설정하세요.
+
+❌ 레포 URL 파싱 실패
+  올바른 GitHub URL 형식인지 확인하세요.
+  지원: https://github.com/owner/repo.git
+        git@github.com:owner/repo.git
+```
+
 ### 레포 Clone 실패
 
 ```
@@ -409,6 +422,8 @@ git worktree remove {WORKTREE_DIR}
 
 ## 참고
 
-- **hamster-diary 레포**: https://github.com/codingspecialist/hamster-diary
-- **블로그 사이트**: https://codingspecialist.github.io/hamster-diary/
-- **로컬 작업 경로**: `/tmp/hamster-diary` (clone), `/tmp/hamster-diary-{id}` (worktree)
+- **설정 파일**: `~/.claude/hams-diary.json`
+- **타겟 레포**: `{REPO_URL}` (설정 파일에서 읽음)
+- **블로그 사이트**: `{PAGES_URL}` (자동 추론 또는 설정 파일의 `pagesUrl`)
+- **로컬 작업 경로**: `{LOCAL_DIR}` (clone), `{WORKTREE_DIR}` (worktree)
+- **레포 변경**: `/hams-diary --set-repo {새URL}`
