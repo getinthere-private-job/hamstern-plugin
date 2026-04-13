@@ -62,12 +62,20 @@ allowed-tools:
 
 ```bash
 # JSON 저장
-echo '{"repo": "{입력된 URL}"}' > ~/.claude/hams-diary.json
+python3 -c "import json; json.dump({'repo': '<입력된 URL>'}, open('$HOME/.claude/hams-diary.json', 'w'))"
 ```
 
 - URL에서 레포명 추출: `https://github.com/owner/repo.git` → `repo`
 - pagesUrl 자동 추론: `https://owner.github.io/repo/`
 - 저장 후 종료 (파일 배포 없이)
+
+> **참고:** 커스텀 도메인을 사용할 경우, `~/.claude/hams-diary.json`을 직접 편집하여 `"pagesUrl"` 필드를 추가할 수 있습니다:
+> ```json
+> {
+>   "repo": "https://github.com/owner/repo.git",
+>   "pagesUrl": "https://mycustom.domain/"
+> }
+> ```
 
 출력:
 ```
@@ -84,6 +92,9 @@ echo '{"repo": "{입력된 URL}"}' > ~/.claude/hams-diary.json
 
 ```bash
 cat ~/.claude/hams-diary.json
+REPO_URL=$(python3 -c "import sys,json; print(json.load(open('$HOME/.claude/hams-diary.json'))['repo'])")
+# pagesUrl이 있으면 추출 (없으면 빈 문자열)
+PAGES_URL_OVERRIDE=$(python3 -c "import sys,json; d=json.load(open('$HOME/.claude/hams-diary.json')); print(d.get('pagesUrl',''))" 2>/dev/null || echo "")
 ```
 
 파일이 없으면 AskUserQuestion으로 URL을 입력받아 저장 후 계속:
@@ -96,7 +107,7 @@ cat ~/.claude/hams-diary.json
 
 입력 후:
 ```bash
-echo '{"repo": "{입력된 URL}"}' > ~/.claude/hams-diary.json
+python3 -c "import json; json.dump({'repo': '<입력된 URL>'}, open('$HOME/.claude/hams-diary.json', 'w'))"
 ```
 
 **설정에서 추출하는 값:**
@@ -115,13 +126,13 @@ echo '{"repo": "{입력된 URL}"}' > ~/.claude/hams-diary.json
 HTTPS: `https://github.com/owner/repo.git`
 ```bash
 REPO_OWNER=$(echo "$REPO_URL" | sed 's|https://github.com/||' | cut -d'/' -f1)
-REPO_NAME=$(echo "$REPO_URL" | sed 's|.*/||; s|\.git$||')
+REPO_NAME=$(echo "$REPO_URL" | sed 's|/$||; s|.*/||; s|\.git$||')
 ```
 
 SSH: `git@github.com:owner/repo.git`
 ```bash
 REPO_OWNER=$(echo "$REPO_URL" | sed 's|git@github.com:||' | cut -d'/' -f1)
-REPO_NAME=$(echo "$REPO_URL" | sed 's|.*/||; s|\.git$||')
+REPO_NAME=$(echo "$REPO_URL" | sed 's|/$||; s|.*/||; s|\.git$||')
 ```
 
 pagesUrl 자동 추론:
