@@ -151,9 +151,9 @@ PAGES_URL="https://${REPO_OWNER}.github.io/${REPO_NAME}/"
 
 ### 2️⃣ 레포 준비
 
-- `/tmp/hamster-diary` 디렉토리 확인
-- 없으면: `git clone https://github.com/codingspecialist/hamster-diary.git /tmp/hamster-diary`
-- 있으면: `git pull origin master`
+- `{LOCAL_DIR}` 디렉토리 확인 (= `/tmp/{REPO_NAME}`)
+- 없으면: `git clone {REPO_URL} {LOCAL_DIR}`
+- 있으면: `cd {LOCAL_DIR} && git pull origin {BASE_BRANCH}`
 
 ### 3️⃣ ID 생성
 
@@ -167,9 +167,13 @@ my-blog-post.md          → my-blog-post
 ### 4️⃣ Git Worktree 생성
 
 ```bash
-git worktree add -b post-{id} /tmp/hamster-diary-{id}
-cd /tmp/hamster-diary-{id}
+cd {LOCAL_DIR}
+BASE_BRANCH=$(git remote show origin | grep 'HEAD branch' | sed 's/.*: //')
+git worktree add -b post-{id} {WORKTREE_DIR}
+cd {WORKTREE_DIR}
 ```
+
+`BASE_BRANCH` 는 이 시점에서 결정되며 이후 PR 생성(`--base {BASE_BRANCH}`)에 사용된다.
 
 ### 5️⃣ posts.json 업데이트
 
@@ -253,7 +257,7 @@ git push -u origin post-{id}
 ```bash
 gh pr create \
   --head post-{id} \
-  --base master \
+  --base {BASE_BRANCH} \
   --title "feat: {제목} 포스트 추가" \
   --body "카테고리: {카테고리}
 태그: {tag1}, {tag2}, ...
@@ -269,14 +273,14 @@ gh pr merge --squash --delete-branch
 **로컬 master 동기화:**
 
 ```bash
-git checkout master
-git pull origin master
+git checkout {BASE_BRANCH}
+git pull origin {BASE_BRANCH}
 ```
 
 ### 9️⃣ Worktree 정리
 
 ```bash
-git worktree remove /tmp/hamster-diary-{id}
+git worktree remove {WORKTREE_DIR}
 ```
 
 ### 🔟 결과 출력
