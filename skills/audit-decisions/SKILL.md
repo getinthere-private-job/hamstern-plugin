@@ -10,7 +10,7 @@ description: 과거 결정사항의 타당성 재검토 및 폐기 검증
 ## 동작 원리
 
 1. **decisions.md 읽기** — 현재 프로젝트의 핀된 결정사항 로드
-2. **배경 분석** — context.md + baby-hamster 기록에서 각 결정의 배경 파악
+2. **배경 분석** — baby-hamster 기록에서 각 결정의 배경 파악
 3. **타당성 검증** — Opus가 Haiku 분석으로:
    - ✅ "이 결정은 여전히 타당합니다" (유지)
    - ⚠️ "수정이 필요합니다" (액션 제안 포함)
@@ -107,7 +107,6 @@ description: 과거 결정사항의 타당성 재검토 및 폐기 검증
 
 - **decisions.md** 자동 재생성
 - **boss-hamster/.decisions.jsonl** 업데이트 (revoked 마크)
-- **context.jsonl** 업데이트 (폐기 사유 기록)
 
 ---
 
@@ -116,8 +115,7 @@ description: 과거 결정사항의 타당성 재검토 및 폐기 검증
 ### 입력 데이터
 
 1. `{project}/.hamstern/boss-hamster/decisions.md` — 현재 확정 결정사항
-2. `{project}/.hamstern/mom-hamster/context.md` — 결정 배경
-3. `{project}/.hamstern/baby-hamster/t{n}_*.md` — 터미널 대화 기록
+2. `{project}/.hamstern/baby-hamster/t{n}_*.md` — 터미널 대화 기록
 
 ### 분석 엔진
 

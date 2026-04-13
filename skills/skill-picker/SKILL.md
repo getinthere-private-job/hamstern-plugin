@@ -8,7 +8,7 @@ model: haiku
 
 # Skill Picker
 
-당신이 "지금 이 상황에는 어떤 스킬을 쓸까?"라고 물을 때, 
+당신이 "지금 이 상황에는 어떤 스킬을 쓸까?"라고 물을 때,
 프로젝트 맥락을 보고 최적의 스킬을 추천해줍니다.
 
 ## 어떻게 작동하나?
@@ -16,14 +16,11 @@ model: haiku
 1. **decisions.md 읽기** (있으면)
    - 이 프로젝트의 확정된 방향 파악
 
-2. **hamstern-nagging.md 읽기** (있으면)
-   - 이 프로젝트에서 자주 쓰는 스킬들
-
-3. **skills-registry.json 읽기** (있으면)
+2. **skills-registry.json 읽기** (있으면)
    - 세상의 인기 스킬들과 메타데이터
 
-4. **Haiku 분석**
-   - 위 3개의 맥락을 종합해서
+3. **Sonnet 분석**
+   - 위 2개의 맥락을 종합해서
    - 지금 상황에 최적의 스킬 3-5개 추천
 
 ## 사용 예시
@@ -62,11 +59,11 @@ hams-skill-picker --context "현재 상황 설명"
 ## 맥락 파일 (선택사항, 없어도 작동)
 
 **필요한 파일들:**
-- `~/.hamstern/hamstern-nagging.md` (프로젝트별 스킬 통계)
+
 - `~/.hamstern/skills-registry.json` (세계 스킬 메타데이터)
 - `{project_root}/.hamstern/boss-hamster/decisions.md` (프로젝트 방향)
 
-파일이 없어도 Haiku가 기본 분석으로 추천합니다.
+파일이 없어도 Sonnet이 기본 분석으로 추천합니다.
 
 ---
 
