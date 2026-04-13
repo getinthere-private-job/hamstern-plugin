@@ -350,7 +350,7 @@ git worktree remove {WORKTREE_DIR}
 
 워크트리 작업 중 main 브랜치가 변경되면:
 
-- 워크트리 안에서 `git pull origin master` 실행
+- 워크트리 안에서 `git pull origin {BASE_BRANCH}` 실행
 - 충돌 해결 후 다시 진행
 
 ---
