@@ -270,7 +270,7 @@ gh pr create \
 gh pr merge --squash --delete-branch
 ```
 
-**로컬 master 동기화:**
+**로컬 main 동기화:**
 
 ```bash
 git checkout {BASE_BRANCH}
@@ -389,7 +389,7 @@ git worktree remove {WORKTREE_DIR}
 
 ```
 ❌ 카테고리 미결정
-  /hamster-diary {파일} 카테고리명 으로 명시하세요
+  /hams-diary {파일} 카테고리명 으로 명시하세요
 ```
 
 ---
@@ -402,7 +402,7 @@ git worktree remove {WORKTREE_DIR}
 - [ ] 요약 추출: frontmatter → 첫 단락 순서
 - [ ] 태그 추출: `##`, `###` 헤딩, 코드 블록 키워드
 - [ ] 카테고리 결정: 인자 또는 내용 분석 → 기존/신규
-- [ ] /tmp/hamster-diary 확인: clone/pull
+- [ ] $LOCAL_DIR 확인: clone/pull
 - [ ] ID 생성: 파일명 → kebab-case
 - [ ] Worktree 생성: `git worktree add -b post-{id} ...`
 - [ ] posts.json Read
@@ -414,7 +414,7 @@ git worktree remove {WORKTREE_DIR}
 - [ ] Git push: `git push -u origin post-{id}`
 - [ ] **✨ gh pr create**: 자동 PR 생성 (제목, 본문 포함)
 - [ ] **✨ gh pr merge --squash --delete-branch**: 자동 merge + 브랜치 삭제
-- [ ] **✨ git checkout master && git pull origin master**: 로컬 master 동기화
+- [ ] **✨ git checkout main && git pull origin main**: 로컬 main 동기화
 - [ ] Worktree 삭제: `git worktree remove`
 - [ ] 결과 출력: GitHub Pages URL + 배포 예상 시간
 
