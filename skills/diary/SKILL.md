@@ -56,6 +56,80 @@ allowed-tools:
 
 ## 동작 순서
 
+### 0️⃣ 설정 파일 확인
+
+**`--set-repo` 플래그가 있는 경우:**
+
+```bash
+# JSON 저장
+echo '{"repo": "{입력된 URL}"}' > ~/.claude/hams-diary.json
+```
+
+- URL에서 레포명 추출: `https://github.com/owner/repo.git` → `repo`
+- pagesUrl 자동 추론: `https://owner.github.io/repo/`
+- 저장 후 종료 (파일 배포 없이)
+
+출력:
+```
+✅ 설정 완료!
+   레포: https://github.com/owner/repo.git
+   블로그: https://owner.github.io/repo/
+   
+이제 /hams-diary {파일경로} 로 배포할 수 있습니다.
+```
+
+**일반 실행인 경우 (`--set-repo` 없음):**
+
+`~/.claude/hams-diary.json` 파일을 읽는다:
+
+```bash
+cat ~/.claude/hams-diary.json
+```
+
+파일이 없으면 AskUserQuestion으로 URL을 입력받아 저장 후 계속:
+
+```
+설정된 타겟 레포가 없습니다.
+배포할 GitHub 레포 URL을 입력해주세요:
+(예: https://github.com/myuser/my-blog.git)
+```
+
+입력 후:
+```bash
+echo '{"repo": "{입력된 URL}"}' > ~/.claude/hams-diary.json
+```
+
+**설정에서 추출하는 값:**
+
+| 변수 | 추출 방법 | 예시 |
+|------|-----------|------|
+| `REPO_URL` | `repo` 필드 그대로 | `https://github.com/owner/repo.git` |
+| `REPO_NAME` | URL에서 마지막 경로 + `.git` 제거 | `repo` |
+| `REPO_OWNER` | URL에서 owner 추출 | `owner` |
+| `PAGES_URL` | `pagesUrl` 필드 or 자동 추론 | `https://owner.github.io/repo/` |
+| `LOCAL_DIR` | `/tmp/{REPO_NAME}` | `/tmp/repo` |
+| `WORKTREE_DIR` | `/tmp/{REPO_NAME}-{id}` | `/tmp/repo-my-post` |
+
+**URL 파싱 로직:**
+
+HTTPS: `https://github.com/owner/repo.git`
+```bash
+REPO_OWNER=$(echo "$REPO_URL" | sed 's|https://github.com/||' | cut -d'/' -f1)
+REPO_NAME=$(echo "$REPO_URL" | sed 's|.*/||; s|\.git$||')
+```
+
+SSH: `git@github.com:owner/repo.git`
+```bash
+REPO_OWNER=$(echo "$REPO_URL" | sed 's|git@github.com:||' | cut -d'/' -f1)
+REPO_NAME=$(echo "$REPO_URL" | sed 's|.*/||; s|\.git$||')
+```
+
+pagesUrl 자동 추론:
+```bash
+PAGES_URL="https://${REPO_OWNER}.github.io/${REPO_NAME}/"
+```
+`pagesUrl` 필드가 설정 파일에 있으면 그 값을 우선 사용.
+
 ### 1️⃣ 파일 분석
 
 - MD 파일 읽기
