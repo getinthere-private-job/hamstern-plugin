@@ -9,61 +9,65 @@ model: haiku
 # Skill Picker
 
 당신이 "지금 이 상황에는 어떤 스킬을 쓸까?"라고 물을 때,
-프로젝트 맥락을 보고 최적의 스킬을 추천해줍니다.
+프로젝트 맥락을 보고 최적의 스킬을 추천하고 설치 방법까지 알려줍니다.
 
 ## 어떻게 작동하나?
 
-1. **decisions.md 읽기** (있으면)
+1. **설치된 플러그인 확인**
+   - `~/.claude/settings.json` 읽기
+   - `enabledPlugins` 에서 `true` 인 항목 추출 → 설치된 플러그인 목록
+
+2. **decisions.md 읽기** (있으면)
+   - `{project_root}/.hamstern/boss-hamster/decisions.md`
    - 이 프로젝트의 확정된 방향 파악
 
-2. **skills-registry.json 읽기** (있으면)
+3. **skills-registry.json 읽기** (있으면)
+   - `~/.hamstern/skills-registry.json`
    - 세상의 인기 스킬들과 메타데이터
 
-3. **Sonnet 분석**
-   - 위 2개의 맥락을 종합해서
-   - 지금 상황에 최적의 스킬 3-5개 추천
+4. **분석 및 추천**
+   - 위 맥락을 종합해서 최적의 스킬 3-5개 추천
+   - 각 스킬의 설치 여부 표시
 
-## 사용 예시
+## 설치 여부 확인 방법
 
-```bash
-# 상황을 설명하고 스킬을 물어봐
-# 예: "버그를 찾고 있는데, 어떤 스킬을 쓸까?"
-# 예: "새 기능 개발 시작하는데 뭐부터?"
-# 예: "코드 리뷰해야 하는데 어떻게?"
+`enabledPlugins` 키 형식: `{plugin-name}@{marketplace-name}`
 
-hams-skill-picker --context "현재 상황 설명"
-```
+추천 스킬의 플러그인 이름(`:` 앞부분)이 `enabledPlugins`에 `true`로 있으면 설치됨.
 
-## 추천 결과
+예: `/gstack:investigate` → `gstack` → `gstack@{marketplace}` 가 `true` 이면 ✅
+
+## 추천 결과 형식
 
 ```
 🎯 추천 순서대로:
 
-1. /gstack:investigate
+1. ⚠️  /gstack:investigate  [미설치]
    이유: 버그를 찾기 위해 체계적인 디버깅이 필요해 보임
-   이 프로젝트에서: 사용률 75% (4회 사용)
+   설치: /plugin marketplace add garrytan/gstack
+         /plugin install gstack
 
-2. /superpowers:test-driven-development
-   이유: 버그 원인을 테스트로 검증하면 좋음
-   이 프로젝트에서: 사용률 82% (5회 사용)
+2. ✅ /superpowers:systematic-debugging  [설치됨]
+   이유: 체계적인 디버깅 워크플로우
+   → 바로 사용 가능
 
-3. /gstack:review
-   이유: 버그 수정 후 리뷰 받기
-   이 프로젝트에서: 사용률 60% (3회 사용)
-
----
-
-[1번: /gstack:investigate 지금 시작하기]
+3. ⚠️  /everything-claude-code:investigate  [미설치]
+   이유: 광범위한 디버깅 에이전트 포함
+   설치: /plugin marketplace add affaan-m/everything-claude-code
+         /plugin install everything-claude-code
 ```
+
+## 설치 커맨드 생성 규칙
+
+- registry에 `github_repo` 있으면: `/plugin marketplace add {github_repo}` + `/plugin install {name}`
+- `claude-plugins-official` 마켓플레이스 플러그인이면: `/plugin install {name}@claude-plugins-official`
+- 정보 없으면: `/plugin marketplace add {github_repo}` 만 안내
 
 ## 맥락 파일 (선택사항, 없어도 작동)
 
-**필요한 파일들:**
-
-- `~/.hamstern/skills-registry.json` (세계 스킬 메타데이터)
-- `{project_root}/.hamstern/boss-hamster/decisions.md` (프로젝트 방향)
-
-파일이 없어도 Sonnet이 기본 분석으로 추천합니다.
+- `~/.claude/settings.json` — 설치된 플러그인 확인 (필수)
+- `~/.hamstern/skills-registry.json` — 스킬 메타데이터
+- `{project_root}/.hamstern/boss-hamster/decisions.md` — 프로젝트 방향
 
 ---
 
