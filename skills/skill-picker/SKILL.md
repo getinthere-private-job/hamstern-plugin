@@ -67,10 +67,12 @@ model: opus
 
 ## 설치 커맨드 생성 규칙
 
-1. registry에 `install_command` 있으면: 그대로 사용
-2. `install_command`가 null이고 `github_repo` 있으면: `/plugin marketplace add {github_repo}` + `/plugin install {name}`
-3. `claude-plugins-official` 마켓플레이스 플러그인이면: `/plugin install {name}@claude-plugins-official`
-4. 정보 없으면: 설치 방법 불명확 안내
+위 번호 순서대로 적용하고 첫 번째 해당 규칙만 사용합니다.
+
+1. registry에 `install_command`가 있고 null이 아니면: 그대로 사용
+2. `install_command`가 없거나 null이고 `github_repo` 있으면: `/plugin marketplace add {github_repo}` + `/plugin install {name}`
+3. `install_command`가 없거나 null이고 `github_repo`도 없으며 `claude-plugins-official` 마켓플레이스 플러그인이면: `/plugin install {name}@claude-plugins-official`
+4. 위 조건 모두 해당 없으면: 설치 방법 불명확 안내
 
 ## 맥락 파일 (선택사항, 없어도 작동)
 
