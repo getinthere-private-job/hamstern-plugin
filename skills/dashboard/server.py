@@ -1,0 +1,241 @@
+"""hams-dashboard HTTP 서버
+사용법: python3 server.py [--port 7777] [--project /path/to/project]
+"""
+import argparse, json, re, sys, threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+from urllib.parse import urlparse
+from datetime import datetime, timezone
+
+STATIC_DIR = Path(__file__).parent / "static"
+
+class HamsHandler(BaseHTTPRequestHandler):
+    project_root: str = "."
+
+    def log_message(self, fmt, *args):
+        pass
+
+    def _json(self, data, status=200):
+        body = json.dumps(data, ensure_ascii=False).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", len(body))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _html(self, content):
+        body = content.encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", len(body))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.end_headers()
+
+    def do_GET(self):
+        path = urlparse(self.path).path.rstrip("/") or "/"
+        root = Path(self.project_root)
+
+        if path == "/":
+            index = STATIC_DIR / "index.html"
+            self._html(index.read_text(encoding="utf-8") if index.exists() else "<h1>index.html 없음</h1>")
+        elif path == "/api/mom":
+            f = root / ".hamstern" / "mom-hamster" / "mom.md"
+            self._json({"content": f.read_text(encoding="utf-8") if f.exists() else ""})
+        elif path == "/api/decisions":
+            f = root / ".hamstern" / "boss-hamster" / "decisions.md"
+            self._json({"content": f.read_text(encoding="utf-8") if f.exists() else ""})
+        elif path == "/api/baby":
+            baby_dir = root / ".hamstern" / "baby-hamster"
+            files = []
+            if baby_dir.exists():
+                for f in sorted(baby_dir.glob("*.md"), key=lambda x: x.stat().st_mtime, reverse=True):
+                    files.append({"name": f.name, "content": f.read_text(encoding="utf-8")})
+            self._json({"files": files})
+        elif path == "/api/analyze/status":
+            sf = root / ".hamstern" / ".analyze-status.json"
+            self._json(json.loads(sf.read_text()) if sf.exists() else {"status": "idle", "results": []})
+        else:
+            self._json({"error": "not found"}, 404)
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", 0))
+        body = json.loads(self.rfile.read(length)) if length else {}
+        path = urlparse(self.path).path.rstrip("/")
+
+        if path == "/api/analyze":
+            self._handle_analyze(body)
+        elif path == "/api/pin/mom":
+            self._json({"status": "ok"})  # mom 핀은 클라이언트 상태로만 관리
+        elif path == "/api/pin/boss":
+            self._handle_boss_pin(body)
+        else:
+            self._json({"error": "not found"}, 404)
+
+    def do_DELETE(self):
+        path = urlparse(self.path).path
+        if path.startswith("/api/pin/boss/"):
+            self._handle_boss_unpin(path[len("/api/pin/boss/"):])
+        else:
+            self._json({"error": "not found"}, 404)
+
+    def _handle_analyze(self, body):
+        root = Path(self.project_root)
+        mom = root / ".hamstern" / "mom-hamster" / "mom.md"
+        if not mom.exists():
+            self._json({"error": "mom.md 없음"}, 400)
+            return
+
+        sf = root / ".hamstern" / ".analyze-status.json"
+        sf.parent.mkdir(parents=True, exist_ok=True)
+        sf.write_text(json.dumps({"status": "running", "progress": 0.0, "results": []}))
+        self._json({"status": "running"})
+
+        mom_pins = body.get("mom_pins", [])
+        project_root = self.project_root
+
+        def run_opus():
+            import subprocess
+            try:
+                mom_content = mom.read_text(encoding="utf-8")
+                pins_hint = ""
+                if mom_pins:
+                    pins_hint = "## 우선 처리 항목\n" + "\n".join(f"- {p}" for p in mom_pins) + "\n\n"
+
+                prompt = f"""다음은 프로젝트 개발 대화 기록입니다. 중복을 제거하고 명확한 결정사항만 추출하세요.
+
+{pins_hint}## 전체 대화 기록
+{mom_content[:8000]}
+
+## 출력 형식
+JSON 배열로만 응답하세요 (코드블록 없이):
+[{{"decision": "결정사항", "category": "Architecture|Performance|UI|Testing|Deployment|Other", "background": "배경 1-2문장", "confidence": 0.9}}]"""
+
+                result = subprocess.run(
+                    ["claude", "--print", "--model", "claude-opus-4-6", prompt],
+                    capture_output=True, text=True, timeout=120
+                )
+                sf.write_text(json.dumps({"status": "running", "progress": 0.5, "results": []}))
+
+                raw = result.stdout.strip()
+                if "```" in raw:
+                    raw = raw.split("```")[1]
+                    if raw.startswith("json"):
+                        raw = raw[4:]
+                results = json.loads(raw.strip())
+
+                def jaccard(a, b):
+                    sa, sb = set(a.lower().split()), set(b.lower().split())
+                    return len(sa & sb) / len(sa | sb) if sa | sb else 0
+
+                deduped = []
+                for r in results:
+                    if not any(jaccard(r["decision"], d["decision"]) > 0.7 for d in deduped):
+                        deduped.append(r)
+
+                sf.write_text(json.dumps({"status": "done", "progress": 1.0, "results": deduped}))
+            except Exception as e:
+                sf.write_text(json.dumps({"status": "error", "error": str(e), "results": []}))
+
+        threading.Thread(target=run_opus, daemon=True).start()
+
+    def _handle_boss_pin(self, body):
+        root = Path(self.project_root)
+        boss_dir = root / ".hamstern" / "boss-hamster"
+        boss_dir.mkdir(parents=True, exist_ok=True)
+        decisions_file = boss_dir / "decisions.md"
+        log_file = boss_dir / "decisions-log.md"
+
+        decision = body.get("decision", "")
+        category = body.get("category", "Other")
+        background = body.get("background", "")
+        source = body.get("source_session", "unknown")
+
+        content = decisions_file.read_text(encoding="utf-8") if decisions_file.exists() else "# 프로젝트 결정사항\n"
+        cat_header = f"## {category}"
+        new_item = f"- {decision}"
+
+        if cat_header in content:
+            content = content.replace(cat_header, cat_header + "\n" + new_item, 1)
+        else:
+            content = content.rstrip() + f"\n\n{cat_header}\n{new_item}\n"
+
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+        content = re.sub(r"_마지막 업데이트:.*?_\n", f"_마지막 업데이트: {ts}_\n", content)
+        if "_마지막 업데이트:" not in content:
+            content = content.replace(
+                "# 프로젝트 결정사항\n",
+                f"# 프로젝트 결정사항\n\n_마지막 업데이트: {ts}_\n_업데이트 방법: /hams-dashboard에서 핀으로 확정_\n"
+            )
+
+        decisions_file.write_text(content, encoding="utf-8")
+
+        log_entry = f"\n---\n\n## {ts} | 핀 추가\n- **결정:** {decision}\n- **카테고리:** {category}\n- **배경:** {background}\n- **출처:** mom MD · session {source}\n"
+        if not log_file.exists():
+            log_file.write_text("# Decisions Log\n<!-- append-only. 수동 편집 금지. -->\n")
+        with log_file.open("a", encoding="utf-8") as f:
+            f.write(log_entry)
+
+        # CLAUDE.md 주입
+        hooks_dir = Path(__file__).parent.parent.parent / "hooks"
+        sys.path.insert(0, str(hooks_dir))
+        try:
+            from inject_decisions import inject_decisions
+            inject_decisions(str(decisions_file), str(root / "CLAUDE.md"))
+        except Exception:
+            pass
+
+        self._json({"status": "ok"})
+
+    def _handle_boss_unpin(self, decision_id):
+        root = Path(self.project_root)
+        boss_dir = root / ".hamstern" / "boss-hamster"
+        decisions_file = boss_dir / "decisions.md"
+        log_file = boss_dir / "decisions-log.md"
+
+        if not decisions_file.exists():
+            self._json({"error": "decisions.md 없음"}, 404)
+            return
+
+        lines = decisions_file.read_text(encoding="utf-8").splitlines()
+        items = [l for l in lines if l.startswith("- ")]
+        try:
+            removed = items[int(decision_id)]
+        except (ValueError, IndexError):
+            self._json({"error": "잘못된 인덱스"}, 400)
+            return
+
+        new_content = "\n".join(l for l in lines if l != removed)
+        decisions_file.write_text(new_content + "\n", encoding="utf-8")
+
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+        if log_file.exists():
+            with log_file.open("a", encoding="utf-8") as f:
+                f.write(f"\n---\n\n## {ts} | 핀 제거\n- **결정:** {removed.lstrip('- ')}\n- **제거 이유:** 사용자가 제외 선택\n")
+
+        self._json({"status": "ok"})
+
+
+def run(port: int, project_root: str):
+    HamsHandler.project_root = project_root
+    server = HTTPServer(("127.0.0.1", port), HamsHandler)
+    print(f"hams-dashboard: http://localhost:{port}")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=7777)
+    parser.add_argument("--project", default=".")
+    args = parser.parse_args()
+    run(args.port, args.project)
