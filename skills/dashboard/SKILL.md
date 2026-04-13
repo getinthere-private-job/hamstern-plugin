@@ -1,6 +1,6 @@
 ---
 name: hams-dashboard
-description: Hamstern 대시보드 웹 UI 실행 (Decisions, History, Recommendations)
+description: Hamstern 대시보드 웹 UI 실행 (Decisions, History)
 ---
 
 # Hamstern Dashboard
@@ -11,10 +11,7 @@ hamstern 프로젝트 관리 대시보드를 웹 브라우저에서 엽니다.
 
 - **Home** — 프로젝트 선택
 - **Decisions** — 현재 프로젝트의 확정된 결정사항 (decisions.md)
-- **History** — 누적 컨텍스트 히스토리 (context.jsonl)
-- **Recommendations** — 추천 스킬 목록 (hamstern-nagging.md)
-  - [설치하기] 버튼으로 스킬 설치
-  - 편집: 이유 삭제, 주석 추가, 스킬 제거
+- **History** — 누적 컨텍스트 히스토리
 
 ## 동작
 
@@ -45,8 +42,6 @@ hamstern 프로젝트 관리 대시보드를 웹 브라우저에서 엽니다.
 ## 데이터 소스
 
 - **Decisions:** `{project}/.hamstern/boss-hamster/decisions.md`
-- **History:** `{project}/.hamstern/mom-hamster/context.jsonl`
-- **Recommendations:** `~/.hamstern/hamstern-nagging.md`
 
 ---
 
@@ -74,16 +69,9 @@ hamstern 프로젝트 관리 대시보드를 웹 브라우저에서 엽니다.
    - 마크다운 포맷 + 핀 제거 버튼
 
 3. **History**
-   - context.jsonl 파싱
    - 카테고리별 결정사항 그룹핑
    - ML 추천 점수 표시 (✨)
    - [핀 추가] 버튼 → boss-hamster/decisions.md 추가
-
-4. **Recommendations**
-   - hamstern-nagging.md 파싱
-   - 설치된 스킬 vs 미설치 스킬 구분
-   - [설치하기] 링크 (플러그인 마켓플레이스로 이동)
-   - 편집 모드: 이유 삭제, 주석 추가, 스킬 제거
 
 ---
 
