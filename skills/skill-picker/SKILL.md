@@ -3,7 +3,7 @@ name: hams-skill-picker
 description: 현재 상황에서 최적의 스킬 추천 (프로젝트 맥락 기반)
 dispatch: subagent
 subagent_type: general-purpose
-model: haiku
+model: opus
 ---
 
 # Skill Picker
@@ -26,8 +26,8 @@ model: haiku
    - 세상의 인기 스킬들과 메타데이터
 
 4. **분석 및 추천**
-   - 위 맥락을 종합해서 최적의 스킬 3-5개 추천
-   - 각 스킬의 설치 여부 표시
+   - 유사 스킬 그룹핑 → 설치된 스킬 우선
+   - 최적의 스킬 3-5개 추천 + 설치 여부 표시
 
 ## 설치 여부 확인 방법
 
@@ -37,22 +37,30 @@ model: haiku
 
 예: `/gstack:investigate` → `gstack` → `gstack@{marketplace}` 가 `true` 이면 ✅
 
+## 유사 스킬 우선순위 규칙
+
+같은 목적의 스킬이 여러 개일 때:
+
+1. **✅ 설치된 스킬 먼저** — 미설치보다 항상 우선
+2. **유사한 것들은 그룹으로 묶기** — 개별 나열 금지
+3. **비교 설명 포함** — "A는 설치됨, B는 더 강력하지만 설치 필요"
+
 ## 추천 결과 형식
 
 ```
 🎯 추천 순서대로:
 
-1. ⚠️  /gstack:investigate  [미설치]
-   이유: 버그를 찾기 위해 체계적인 디버깅이 필요해 보임
-   설치: /plugin marketplace add garrytan/gstack
-         /plugin install gstack
+1. ✅ /superpowers:systematic-debugging  [설치됨]
+   이유: 체계적인 디버깅 워크플로우 — 바로 사용 가능
+   유사 스킬: ⚠️ /gstack:investigate (더 강력하나 설치 필요)
+              설치: /plugin marketplace add garrytan/gstack
+                    /plugin install gstack
 
-2. ✅ /superpowers:systematic-debugging  [설치됨]
-   이유: 체계적인 디버깅 워크플로우
-   → 바로 사용 가능
+2. ✅ /superpowers:test-driven-development  [설치됨]
+   이유: 버그 원인을 테스트로 검증
 
-3. ⚠️  /everything-claude-code:investigate  [미설치]
-   이유: 광범위한 디버깅 에이전트 포함
+3. ⚠️  /everything-claude-code:research  [미설치]
+   이유: 위 스킬로 해결 안 될 때 — 광범위한 에이전트
    설치: /plugin marketplace add affaan-m/everything-claude-code
          /plugin install everything-claude-code
 ```
