@@ -51,10 +51,10 @@ description: 과거 결정사항의 타당성 재검토 및 폐기 검증
 └─ 타당성: ⬛⬛⬜⬜⬜ (2/5) — 낮음
 
 분석:
-  ⚠️ 수정 필요: 
-  - 현재 baby-hamster stop 훅이 2단계로 기록되는데, 
+  ⚠️ 수정 필요:
+  - 현재 baby-hamster stop 훅이 2단계로 기록되는데,
     요약 제거 이후 턴 카운트 파일 사용이 줄었습니다.
-  - 제안: 턴 카운트 로직을 완전히 제거할지, 
+  - 제안: 턴 카운트 로직을 완전히 제거할지,
     또는 다른 목적으로 활용할지 재검토 필요
   - 액션: [수정 필요로 마크] 또는 [새 결정 생성]
 ```
@@ -71,7 +71,7 @@ description: 과거 결정사항의 타당성 재검토 및 폐기 검증
   ❌ 폐기 추천:
   - HTTPDashboardServer는 구현되었으나 아직 작동하지 않음 (cmux dashboard 커맨드 미등록)
   - 현재 버전: 0.1 (진행 중)
-  - 유지하려면: 
+  - 유지하려면:
     1. cmux CLI에 dashboard 명령 등록
     2. HTTP 서버 작동 테스트
   - 폐기하려면:
@@ -88,6 +88,7 @@ description: 과거 결정사항의 타당성 재검토 및 폐기 검증
 ### 검토 결과 선택
 
 각 결정에 대해:
+
 - **✅ 유지** — decisions.md 유지 (변경 없음)
 - **⚠️ 수정 필요** — 결정사항 그대로 두고, 편의상 주석만 추가
 - **❌ 폐기** — decisions.md에서 제거 (최종 확인 필수)
@@ -106,7 +107,6 @@ description: 과거 결정사항의 타당성 재검토 및 폐기 검증
 ## 결과 저장
 
 - **decisions.md** 자동 재생성
-- **boss-hamster/.decisions.jsonl** 업데이트 (revoked 마크)
 
 ---
 
@@ -125,10 +125,10 @@ description: 과거 결정사항의 타당성 재검토 및 폐기 검증
 ### 출력 데이터
 
 변경 사항:
+
 ```
 {project}/.hamstern/boss-hamster/
 ├─ decisions.md (재생성)
-└─ .decisions.jsonl (revoked 항목 추가)
 ```
 
 ---
