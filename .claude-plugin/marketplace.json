@@ -16,7 +16,8 @@
         "./skills/skill-picker",
         "./skills/dashboard",
         "./skills/audit-decisions",
-        "./skills/registry-collector"
+        "./skills/registry-collector",
+        "./skills/context"
       ]
     }
   ]
