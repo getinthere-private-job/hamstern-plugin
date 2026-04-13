@@ -396,15 +396,20 @@ git worktree remove {WORKTREE_DIR}
 
 ## 내부 구현 (Claude가 따를 체크리스트)
 
+- [ ] `--set-repo` 플래그 확인: 있으면 설정 파일 저장 후 종료
+- [ ] `~/.claude/hams-diary.json` Read: repo, pagesUrl 추출
+- [ ] 설정 파일 없으면 AskUserQuestion → 저장 후 계속
+- [ ] REPO_URL, REPO_NAME, REPO_OWNER, PAGES_URL, LOCAL_DIR, WORKTREE_DIR 변수 결정
 - [ ] 인자 파싱: 파일경로, 카테고리(옵션)
 - [ ] MD 파일 Read
 - [ ] 제목 추출: `# .*` 정규식으로 첫 h1 찾기
 - [ ] 요약 추출: frontmatter → 첫 단락 순서
 - [ ] 태그 추출: `##`, `###` 헤딩, 코드 블록 키워드
 - [ ] 카테고리 결정: 인자 또는 내용 분석 → 기존/신규
-- [ ] $LOCAL_DIR 확인: clone/pull
+- [ ] {LOCAL_DIR} 확인: clone/pull
 - [ ] ID 생성: 파일명 → kebab-case
 - [ ] Worktree 생성: `git worktree add -b post-{id} ...`
+- [ ] BASE_BRANCH 자동 감지: `git remote show origin | grep 'HEAD branch'`
 - [ ] posts.json Read
 - [ ] posts.json 수정: categories 추가(신규시), posts 앞에 항목 삽입
 - [ ] posts.json Write
@@ -414,9 +419,9 @@ git worktree remove {WORKTREE_DIR}
 - [ ] Git push: `git push -u origin post-{id}`
 - [ ] **✨ gh pr create**: 자동 PR 생성 (제목, 본문 포함)
 - [ ] **✨ gh pr merge --squash --delete-branch**: 자동 merge + 브랜치 삭제
-- [ ] **✨ git checkout main && git pull origin main**: 로컬 main 동기화
-- [ ] Worktree 삭제: `git worktree remove`
-- [ ] 결과 출력: GitHub Pages URL + 배포 예상 시간
+- [ ] **✨ git checkout {BASE_BRANCH} && git pull origin {BASE_BRANCH}**: 로컬 베이스 브랜치 동기화
+- [ ] Worktree 삭제: `git worktree remove {WORKTREE_DIR}`
+- [ ] 결과 출력: {PAGES_URL} + 배포 예상 시간
 
 ---
 
