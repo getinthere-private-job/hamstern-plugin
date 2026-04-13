@@ -86,7 +86,8 @@ GitHub Search API는 **쿼리당 최대 1,000개** 결과를 반환합니다 (Gi
     "icon": "⚡",
     "github_repo": "obra/superpowers",
     "github_stars": 5420,
-    "popularity_score": 0.85
+    "popularity_score": 0.85,
+    "install_command": "/plugin marketplace add obra/superpowers"
   },
   ...
 ]
@@ -103,6 +104,7 @@ GitHub Search API는 **쿼리당 최대 1,000개** 결과를 반환합니다 (Gi
 - `github_repo` — GitHub 저장소 (owner/repo)
 - `github_stars` — GitHub 스타 수
 - `popularity_score` — 인기도 점수 (0.0~1.0, 스타수 기반 정규화)
+- `install_command` — 설치 명령어 (README 파싱, 없으면 null)
 
 ## 저장 위치
 
@@ -145,6 +147,23 @@ GitHub Search API는 **쿼리당 최대 1,000개** 결과를 반환합니다 (Gi
 환경변수 `GITHUB_TOKEN` 설정 시:
 - API 호출 한도 시간당 5,000회 (미설정: 60회)
 - 없어도 동작하지만 rate limit 걸릴 수 있음
+
+### install_command 감지
+
+수집 시 각 레포의 README.md를 다운로드하여 설치 명령어를 파싱합니다.
+**stars > 100 인 레포만 적용** (rate limit 절약).
+
+우선순위 순서로 감지:
+
+| 우선순위 | 패턴 | 예시 |
+|---------|------|------|
+| 1 | `/plugin marketplace add {repo}` | `/plugin marketplace add obra/superpowers` |
+| 2 | `npx {package}@latest` | `npx get-shit-done-cc@latest` |
+| 3 | `npm install -g {package}` | `npm install -g some-tool` |
+| 4 | `npm install {package}` | `npm install some-package` |
+
+감지 실패 시 `install_command: null`.
+README 다운로드 실패 시에도 `null` 처리 후 계속 진행.
 
 ---
 
