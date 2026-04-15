@@ -1,5 +1,5 @@
 ---
-name: hams-registry-collector
+name: registry-collector
 description: Claude Code 스킬/플러그인 레지스트리 수집 (큐레이션 소스)
 ---
 

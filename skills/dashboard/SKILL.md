@@ -1,5 +1,5 @@
 ---
-name: hams-dashboard
+name: dashboard
 description: Hamstern 대시보드 웹 UI 실행 — mom MD를 Opus로 분석해 결정사항 추출 + 2단계 핀으로 decisions.md 확정
 ---
 

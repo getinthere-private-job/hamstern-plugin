@@ -1,5 +1,5 @@
 ---
-name: hams-context
+name: context
 description: decisions.md를 CLAUDE.md에 주입 — compact 후 결정사항 복구. SessionStart 훅으로 자동 실행됨.
 allowed-tools:
   - Read

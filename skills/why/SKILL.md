@@ -1,5 +1,5 @@
 ---
-name: hams-why
+name: why
 description: 현상의 근본 원인 파악 — 4개 서브에이전트 병렬 조사 후 소크라테스식 추론으로 원칙 수준 근본 원인 도달 및 rules 저장
 allowed-tools:
   - Read

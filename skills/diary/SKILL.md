@@ -1,5 +1,5 @@
 ---
-name: hams-diary
+name: diary
 description: |
   마크다운 파일을 임의의 GitHub Pages 레포에 자동 배포.
   타겟 레포는 ~/.claude/hams-diary.json 에 설정. --set-repo 로 변경 가능.

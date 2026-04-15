@@ -1,5 +1,5 @@
 ---
-name: hams-audit-decisions
+name: audit-decisions
 description: 과거 결정사항의 타당성 재검토 및 폐기 검증
 ---
 
