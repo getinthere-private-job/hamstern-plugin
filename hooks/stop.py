@@ -1,6 +1,10 @@
 import sys, json
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
+from _gate import is_hamstern_project
+
+
 def is_app_running(cwd: str) -> bool:
     import time
     flag = Path(cwd) / ".hamstern" / ".app-running"
@@ -35,9 +39,12 @@ def main():
         data = json.load(sys.stdin)
     except Exception:
         return
+    cwd = data.get("cwd", ".")
+    if not is_hamstern_project(cwd):
+        return
     record_stop(
         session_id=data.get("session_id", "unknown"),
-        cwd=data.get("cwd", "."),
+        cwd=cwd,
         transcript_path=data.get("transcript_path", ""),
     )
 

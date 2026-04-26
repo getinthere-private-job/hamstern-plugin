@@ -19,7 +19,9 @@
         "./skills/registry-collector",
         "./skills/context",
         "./skills/why",
-        "./skills/diary"
+        "./skills/diary",
+        "./skills/start",
+        "./skills/stop"
       ]
     }
   ]

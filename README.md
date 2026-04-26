@@ -64,6 +64,44 @@ Anthropic이 왜 이 기능을 안 만들었나 — 부정적 시각:
 
 ---
 
+# 🔒 후크 활성화 조건 (`/hams-start`)
+
+햄스턴 플러그인을 설치하면 3개의 후크 (`SessionStart`, `UserPromptSubmit`, `Stop`) 가 등록되지만, **프로젝트 루트에 `.hamstern/` 폴더가 있을 때만** 동작한다. 그 외 프로젝트에선 silent exit — 파일 생성·CLAUDE.md 수정·트랜스크립트 파싱 모두 스킵.
+
+> **왜 이렇게?** Claude Code 플러그인 후크는 enable 시 모든 세션에서 발화하는 게 기본 동작 ([공식 docs](https://code.claude.com/docs/en/hooks.md)). 햄스턴과 무관한 프로젝트까지 `.hamstern/baby-hamster/` 같은 폴더가 생겨선 안 된다. 그래서 후크 자체가 self-gate.
+
+## 사용법
+
+| 명령 | 동작 |
+|------|------|
+| `/hams-start` | 현재 프로젝트에서 햄스턴 활성화 — `.hamstern/{baby,mom,boss}-hamster/` + `config.json` + `README.md` 생성 |
+| `/hams-stop` | 일시 비활성 — `.hamstern/.disabled` 마커 생성 (데이터 보존) |
+| `rm -rf .hamstern` | 완전 제거 (모든 데이터 삭제) |
+
+```bash
+# 새 프로젝트에서 햄스턴 사용 시작
+cd ~/my-project
+# Claude Code 세션에서:
+/hams-start
+
+# 잠깐 끄기 (데이터는 그대로)
+/hams-stop
+
+# 다시 켜기
+/hams-start
+```
+
+## cmux 툴 (macOS) 과의 공존
+
+햄스턴 본 도구 `cmux.app` (macOS) 가 실행 중이면 플러그인 후크는 **자동으로 양보**한다 (`.hamstern/.app-running` 마커 검사, 24시간 자동 만료). 즉:
+
+- macOS 사용자가 cmux + 플러그인 둘 다 설치 — cmux 가 우선, 플러그인은 폴백
+- Windows 사용자 — cmux 없으니 플러그인이 100% 처리
+
+데이터·CLAUDE.md 가 두 군데서 동시에 쓰여 충돌하는 일 없음.
+
+---
+
 # /hams-diary — 로컬 마크다운으로 운영하는 개인 블로그
 
 `로컬에서 마크다운으로 글을 쓰고`, 명령 하나로 **GitHub Pages 개인 블로그**에 정리·게시하는 도구. 강사·연구자·개발자가 자기 글을 한 곳에 모아 운영하기 좋다.
@@ -280,6 +318,15 @@ DB·서버 추가 없이 두 가지를 켤 수 있다. 둘 다 기본 OFF.
 ## 📝 변경 내역 (Changelog)
 
 > 버전 관리는 git commit SHA 로 한다 (`/plugin update hams` 가 매 커밋마다 새 버전으로 인식). 아래는 사용자 관점의 굵직한 변화만 정리.
+
+### 2026-04-26 — 후크 프로젝트 스코핑 + `/hams-start` · `/hams-stop`
+
+- 후크 3종 (`SessionStart`, `UserPromptSubmit`, `Stop`) 가 `.hamstern/` 폴더 있는 프로젝트에서만 동작
+- 그 외 프로젝트에선 silent exit — 의도치 않은 `.hamstern/baby-hamster/` 생성 / `CLAUDE.md` 수정 차단
+- **`/hams-start`** 신규 — 현재 프로젝트에서 햄스턴 활성화 (`.hamstern/` 트리 + 메타 자동 생성)
+- **`/hams-stop`** 신규 — 일시 비활성 (`.disabled` 마커. 데이터 보존)
+- `SessionStart` 도 `.app-running` defer 추가 — cmux 툴과 공존 시 decisions.md 이중 주입 방지
+- 19개 단위·통합 테스트 추가 (`hooks/test_gate.py`, `hooks/test_all_hooks_gated.py`)
 
 ### 2026-04-26 — 명령어 단순화 (3 서브명령 + 개인 블로그 프레이밍)
 
