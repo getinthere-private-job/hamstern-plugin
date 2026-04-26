@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rule: {{title}}</title>
 <style>
 body { font-family: -apple-system, sans-serif; padding: 20px; max-width: 900px; margin: 0 auto; }
@@ -11,6 +12,7 @@ h2 { margin-top: 32px; }
 .bad { border-color: #c33; background: #fdd; }
 .good { border-color: #393; background: #dfd; }
 .label { font-weight: bold; margin-bottom: 8px; }
+/* Caller MUST escape any "</style>" sequences in custom_css to avoid breaking out of the style block. */
 {{custom_css}}
 </style>
 </head>
@@ -20,13 +22,13 @@ h2 { margin-top: 32px; }
 
 <h2>✅ 올바른 패턴</h2>
 <div class="example good">
-<div class="label">good example</div>
+<div class="label">올바른 예시</div>
 {{good_html}}
 </div>
 
 <h2>❌ 잘못된 패턴</h2>
 <div class="example bad">
-<div class="label">bad example</div>
+<div class="label">잘못된 예시</div>
 {{bad_html}}
 </div>
 </body>
