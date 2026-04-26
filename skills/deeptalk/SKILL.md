@@ -20,7 +20,7 @@ allowed-tools:
 
 이 스킬 진행 중 **코드/설정 파일 수정, 신규 파일 생성, 구현 작업을 절대 하지 않는다**. 예외는 종료 시 사용자가 승인한 경우의 대화 요약 문서(`docs/discussions/...`) 한 건뿐.
 
-읽기 전용 탐색(Read/Glob/Grep)은 허용. 코드 수정 요청이 들어오면 **이 스킬을 종료하고** brainstorming 또는 plan 모드로 라우팅한다.
+읽기 전용 탐색(Read/Glob/Grep)은 허용. 코드 수정 요청이 들어오면 **이 스킬을 종료한다**. 자동으로 다음 작업으로 넘어가지 않는다 — 종료 후 사용자가 직접 다음 단계를 지시하도록 한다.
 
 ## 활성화 절차
 
@@ -84,6 +84,7 @@ mkdir -p .hamstern && touch .hamstern/.deeptalk-running
 종료 시 **반드시**:
 1. 마커 제거: `rm -f .hamstern/.deeptalk-running`
 2. 저장 가치 판단 (아래 섹션)
+3. 사용자에게 명시적 종료 안내 — 자동으로 다음 작업으로 넘어가지 않는다.
 
 ## 요약 저장 기준
 
@@ -125,16 +126,23 @@ mkdir -p .hamstern && touch .hamstern/.deeptalk-running
 
 ## Red Flags — 이 스킬에서 빠져나가야 할 신호
 
-다음이 보이면 즉시 deep-talk을 종료하고 적절한 모드로 라우팅:
+다음 신호가 보이면 즉시 deep-talk을 종료한다:
 
-| 신호 | 라우팅 대상 |
-|------|-------------|
-| "이거 구현해줘" / "코드 짜줘" | brainstorming → plan |
-| "리팩토링해줘" / "수정해줘" | brainstorming 또는 직접 편집 |
-| "이 버그 고쳐줘" | systematic-debugging |
-| "테스트 추가해줘" | test-driven-development |
+- "이거 구현해줘" / "코드 짜줘"
+- "리팩토링해줘" / "수정해줘"
+- "이 버그 고쳐줘"
+- "테스트 추가해줘"
+- 그 외 명시적 코드 수정 요청
 
-종료 절차(마커 제거)를 먼저 수행한 뒤 라우팅한다.
+**종료 절차**:
+1. `.hamstern/.deeptalk-running` 마커 제거 (`rm -f .hamstern/.deeptalk-running`)
+2. 사용자에게 명시적 종료 안내 — "deep-talk 종료합니다. 코드 작업으로 넘어가시려면 다음 메시지로 지시해 주세요."
+3. **자동 라우팅 금지** — brainstorming/plan/debugging 등 후속 스킬을 Claude가 임의로 호출하지 않는다. 다음 작업의 진입은 사용자의 다음 메시지 또는 명시적 명령에서 시작.
+
+**선택적 추천**: 종료 안내 시 available-skills 목록에 후속 작업에 적합한 스킬이 있다면 1줄 추천 가능 (강요 아님):
+> "참고: 구현 설계가 필요하시면 `superpowers:brainstorming` → `superpowers:writing-plans` 흐름이 유용합니다."
+
+추천 가능한 스킬이 없으면 추천 문구 생략. 사용자가 알아서 진행하도록 둠.
 
 ## 마커 누수 안전망
 
