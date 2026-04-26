@@ -49,13 +49,17 @@ allowed-tools:
 /hams:diary publish --rebuild all            # 로컬 원본 없이 사이트 글 재테마
 
 # 플래그
---no-theme                              # HTML 어댑터 주입 끄기
+--no-theme                              # HTML 어댑터 주입 끄기 (라이트/다크 변환 OFF, 폭은 native)
 --overwrite                             # 기존 동일 글 덮어쓰기 (originalFilename → slug → 제목 매칭)
 --draft                                 # 푸시 안 하고 워크트리만 남김
 --preview-port N                        # 미리보기 포트 (기본 8765)
 --rebuild [slug|all|--category name]    # 사이트 기존 글 재테마/재시그니처
 --profile {name}                        # 1회 임시 프로파일 override (active 변경 안 함)
+--fit-viewport                          # 시뮬레이터 max-width 풀어서 viewport 채움 (반응형 시뮬레이터 권장)
+--scale-up                              # CSS transform: scale 로 viewport 너비에 맞게 확대 (고정폭 시뮬레이터 권장)
 ```
+
+> **시뮬레이터 폭 정책 (HTML 엔진 전용)** — 디폴트는 시뮬레이터 자체 `max-width` 보존 (가운데 정렬 또는 풀너비). `--fit-viewport` / `--scale-up` 은 상호 배타. 한 번 publish 시 선택한 모드는 `posts.json[].fit` 에 저장돼 다음 `--rebuild` 때 그대로 재현된다.
 
 `category` 가 비어있으면 AskUserQuestion 으로 선택받는다.
 
@@ -260,12 +264,14 @@ if os.path.exists(p):
   option                                                # 이 사용법 표시 (read-only)
 
 🚩 publish 플래그
-  --no-theme                           # HTML 어댑터 주입 끄기
+  --no-theme                           # HTML 어댑터 주입 끄기 (라이트/다크 변환 OFF, 폭은 native)
   --overwrite                          # 같은 글 발견 시 기존 slug에 덮어쓰기 (URL 보존)
   --draft                              # 푸시 안 하고 워크트리만 남김
   --preview-port N                     # 미리보기 포트 (기본 8765)
   --rebuild [slug|all|--category X]    # 사이트 기존 글 재테마
   --profile {name}                     # 1회 임시 프로파일 override (active 변경 안 함)
+  --fit-viewport                       # 시뮬레이터 max-width 풀어서 viewport 채움 (반응형 시뮬레이터 권장)
+  --scale-up                           # CSS transform: scale 로 viewport 너비에 맞게 확대 (고정폭 시뮬레이터 권장)
 
 🔧 config 서브명령 (활성 프로파일 갱신)
   show                                 # 활성 + 모든 프로파일 표시
@@ -496,7 +502,7 @@ sed -e "s|{{POST_TITLE}}|${TITLE}|g" \
 
 ```bash
 # inject_html_adapter.py 호출
-# features.comments.enabled === true 이고 4개 값이 모두 있으면 --comments-* 인자 전달
+# 1) features.comments.enabled === true 이고 4개 값이 모두 있으면 --comments-* 인자 전달
 COMMENTS_ARGS=""
 if [ "$FEATURES_COMMENTS_ENABLED" = "true" ] \
    && [ -n "$COMMENTS_REPO" ] && [ -n "$COMMENTS_REPO_ID" ] \
@@ -504,9 +510,22 @@ if [ "$FEATURES_COMMENTS_ENABLED" = "true" ] \
   COMMENTS_ARGS="--comments-repo $COMMENTS_REPO --comments-repo-id $COMMENTS_REPO_ID --comments-category $COMMENTS_CATEGORY --comments-category-id $COMMENTS_CATEGORY_ID"
 fi
 
+# 2) 폭 모드 — CLI 플래그 또는 (--rebuild 시) posts.json[].fit 에서 결정
+#    publish 시: --fit-viewport / --scale-up 인자에서 추출
+#    rebuild 시: 기존 entry 의 fit 필드 (없으면 native)
+FIT_ARG=""
+case "$FIT_MODE" in
+  viewport) FIT_ARG="--fit-viewport" ;;
+  scale)    FIT_ARG="--scale-up" ;;
+  *)        FIT_ARG="" ;;
+esac
+
 python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
   --src "${SRC}" --dst "posts/${slug}.html" --title "${TITLE}" \
-  ${NO_THEME:+--no-theme} $COMMENTS_ARGS
+  ${NO_THEME:+--no-theme} $COMMENTS_ARGS $FIT_ARG
+
+# 3) 결과 fit_mode 를 posts.json 의 해당 entry 에 저장 (재빌드 시 그대로 재현)
+#    {"id":..., "fit":"native|viewport|scale", ...}
 ```
 
 배치 모드는 `--map` JSON 으로 한 번에 호출 가능.

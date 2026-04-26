@@ -320,10 +320,75 @@ def make_giscus_block(repo: str, repo_id: str, category: str, category_id: str,
 '''
 
 
-def inject(html: str, title: str, with_theme: bool = True, comments=None) -> str:
+FIT_VIEWPORT_STYLE = r"""
+<!-- ======= OSD fit-viewport (max-width override) ======= -->
+<style id="osd-fit-viewport">
+  /* Reset simulator's own max-width so layout fills viewport.
+     Best for responsive simulators whose children also flex. */
+  html, body { max-width: 100% !important; }
+  .layout, .simulator, .container, main, .wrap, .wrapper, .page, .app, .root,
+  [class*="container"], [class*="wrapper"] {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+</style>
+<!-- ======= /fit-viewport ======= -->
+"""
+
+SCALE_UP_SCRIPT = r"""
+<!-- ======= OSD scale-up (CSS transform: scale) ======= -->
+<style id="osd-scale-up-style">
+  #osd-content-wrapper { transform-origin: top left; }
+</style>
+<script>
+  (function(){
+    function setup(){
+      var wrap = document.getElementById('osd-content-wrapper');
+      if (!wrap) return;
+      var measured = false;
+      var nat = 0;
+      function fit(){
+        wrap.style.transform = 'scale(1)';
+        if (!measured) {
+          // measure natural width once after first paint, with scale=1
+          nat = wrap.scrollWidth;
+          measured = true;
+        }
+        var vw = document.documentElement.clientWidth;
+        if (nat > 0 && vw > nat) {
+          var s = vw / nat;
+          wrap.style.transform = 'scale(' + s + ')';
+          // height compensation: scaled body needs proportional space
+          wrap.style.minHeight = (window.innerHeight / s) + 'px';
+        }
+      }
+      // initial fit on next frame so children laid out
+      requestAnimationFrame(function(){ requestAnimationFrame(fit); });
+      var t = null;
+      window.addEventListener('resize', function(){
+        clearTimeout(t);
+        t = setTimeout(function(){ measured = false; fit(); }, 80);
+      });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setup, { once: true });
+    } else { setup(); }
+  })();
+</script>
+<!-- ======= /scale-up ======= -->
+"""
+
+
+def inject(html: str, title: str, with_theme: bool = True, comments=None,
+           fit_mode: str = 'native') -> str:
+    """fit_mode: 'native' (default — preserve simulator's own width),
+       'viewport' (remove simulator max-width to fill viewport — best for responsive),
+       'scale' (CSS transform: scale to enlarge — best for fixed-pixel simulators)."""
     source_theme = detect_source_theme(html) if with_theme else 'dark'
     style = ADAPTER_STYLE_FULL if with_theme else ADAPTER_STYLE_NOTHEME
     style = style.replace('__SOURCE_THEME__', source_theme)
+    if fit_mode == 'viewport':
+        style = style + FIT_VIEWPORT_STYLE
     bar = make_bar(title, with_theme)
 
     # Insert adapter style+script right after <head>
@@ -333,6 +398,9 @@ def inject(html: str, title: str, with_theme: bool = True, comments=None) -> str
 
     # Insert bar + scripts right after <body>
     body_payload = bar + (WRAP_SCRIPT if with_theme else '') + (THEME_TOGGLE_SCRIPT if with_theme else '')
+    if fit_mode == 'scale' and with_theme:
+        # scale only meaningful when wrapper exists (with_theme creates it)
+        body_payload += SCALE_UP_SCRIPT
     new2 = re.sub(r'(<body\b[^>]*>)', r'\1' + body_payload, new, count=1, flags=re.IGNORECASE)
     if new2 == new:
         new2 = '<body>' + body_payload + new + '</body>'
@@ -395,7 +463,15 @@ def main(argv=None):
     ap.add_argument('--comments-repo-id', help='giscus data-repo-id (R_kgDO...)')
     ap.add_argument('--comments-category', help='giscus data-category (e.g. Announcements)')
     ap.add_argument('--comments-category-id', help='giscus data-category-id (DIC_kwDO...)')
+    ap.add_argument('--fit-viewport', action='store_true',
+                    help='Remove simulator max-width to fill viewport (best for responsive layouts)')
+    ap.add_argument('--scale-up', action='store_true',
+                    help='CSS transform: scale wrapper to viewport width (best for fixed-pixel simulators)')
     args = ap.parse_args(argv)
+
+    if args.fit_viewport and args.scale_up:
+        ap.error('--fit-viewport and --scale-up are mutually exclusive — pick one.')
+    fit_mode = 'viewport' if args.fit_viewport else ('scale' if args.scale_up else 'native')
 
     with_theme = not args.no_theme
     comments = None
@@ -430,7 +506,9 @@ def main(argv=None):
     for j in jobs:
         with open(j['src'], 'r', encoding='utf-8') as f:
             html = f.read()
-        out = inject(html, j['title'], with_theme=with_theme, comments=comments)
+        # Per-job override via --map: {"src":..., "dst":..., "title":..., "fit":"viewport|scale|native"}
+        job_fit = j.get('fit') or fit_mode
+        out = inject(html, j['title'], with_theme=with_theme, comments=comments, fit_mode=job_fit)
         os.makedirs(os.path.dirname(os.path.abspath(j['dst'])), exist_ok=True)
         with open(j['dst'], 'w', encoding='utf-8') as f:
             f.write(out)

@@ -261,7 +261,9 @@ DB·서버 추가 없이 두 가지가 기본 ON 으로 동작한다. 검색은 
 
 다크 전용으로 작성된 HTML 시뮬레이터도 그대로 던져넣으면 다음이 자동 처리된다.
 
-- **시뮬레이터 자체 폭 보존** — 어댑터가 시뮬레이터 스타일을 손대지 않음. 자체 `.container { max-width: ...; margin: 0 auto }` 가 있으면 가운데 정렬, 없으면 풀너비 (작성자 의도 그대로)
+- **시뮬레이터 자체 폭 보존 (디폴트)** — 어댑터가 시뮬레이터 스타일을 손대지 않음. 자체 `.container { max-width: ...; margin: 0 auto }` 가 있으면 가운데 정렬, 없으면 풀너비 (작성자 의도 그대로)
+- **`--fit-viewport`** (반응형 시뮬레이터용) — 시뮬레이터의 자체 max-width 를 풀어 viewport 너비를 채움. 자식 요소들도 함께 늘어나는 반응형 레이아웃에 적합
+- **`--scale-up`** (고정폭 시뮬레이터용) — CSS transform: scale 로 시뮬레이터 전체를 viewport 에 맞게 확대. 고정 픽셀 레이아웃이라 max-width 만 풀면 빈 공간만 늘어나는 경우에 사용. 폰트·여백 모두 비례 확대
 - **라이트/다크 토글** — `localStorage('blog-theme')` 으로 블로그 테마와 동기화
 - **원본 톤 자동 감지** — 빌드 시점에 원본 HTML 의 dominant background 를 보고 `light` / `dark` 로 분류 (`data-osd-source-theme`). 라이트 톤 원본(예: 베이지)도 자동 인식
 - **양방향 변환** — 원본 톤과 사용자 선택 테마가 다를 때만 `filter: invert + hue-rotate` 적용. 다크 원본 ↔ 라이트 모드, 라이트 원본 ↔ 다크 모드 모두 자동 변환되고, 톤이 같으면 원본 색상 그대로 유지 (이미지/SVG/캔버스는 역-필터로 원색 유지)
@@ -308,6 +310,15 @@ DB·서버 추가 없이 두 가지가 기본 ON 으로 동작한다. 검색은 
 > 버전 관리는 git commit SHA 로 한다 (`/plugin update hams` 가 매 커밋마다 새 버전으로 인식). 아래는 사용자 관점의 굵직한 변화만 정리.
 >
 > ⚠️ 옛 항목의 명령어 예시(`--enable-search`, `--rebuild-remote`, `--edit` 등 단독 플래그 형태)는 **폐기된 표기**입니다. 현재 사용법은 위 본문 또는 `/hams:diary option` 참조.
+
+### 2026-04-27 — diary 어댑터에 `--fit-viewport` / `--scale-up` 폭 모드 추가
+
+- 시뮬레이터 폭 정책을 사용자 선택으로 — 기본은 native (자체 폭 보존), 옵션 두 가지 추가:
+  - `--fit-viewport`: max-width 풀기 → viewport 채움 (반응형 시뮬레이터)
+  - `--scale-up`: CSS transform: scale → 비율대로 확대 (고정폭 시뮬레이터)
+- 두 옵션은 상호 배타. 한 번 publish 시 선택한 모드는 `posts.json[].fit` 에 저장돼 `--rebuild` 시 그대로 재현
+- `inject_html_adapter.py` 에 `--fit-viewport` · `--scale-up` 인자 + `inject(fit_mode=...)` 추가
+- `--map` JSON 의 각 job 에도 `"fit": "viewport|scale|native"` 키로 per-job override 가능
 
 ### 2026-04-26 — diary 어댑터: 강제 풀너비 → 시뮬레이터 자체 폭 보존
 
