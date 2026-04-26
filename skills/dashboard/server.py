@@ -172,7 +172,7 @@ JSON 배열로만 응답하세요 (코드블록 없이):
         if "_마지막 업데이트:" not in content:
             content = content.replace(
                 "# 프로젝트 결정사항\n",
-                f"# 프로젝트 결정사항\n\n_마지막 업데이트: {ts}_\n_업데이트 방법: /hams-dashboard에서 핀으로 확정_\n"
+                f"# 프로젝트 결정사항\n\n_마지막 업데이트: {ts}_\n_업데이트 방법: /hams:dashboard에서 핀으로 확정_\n"
             )
 
         decisions_file.write_text(content, encoding="utf-8")

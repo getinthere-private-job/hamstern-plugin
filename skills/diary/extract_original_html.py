@@ -5,7 +5,7 @@ extract_original_html.py — reverse of inject_html_adapter.py
 Reads a published HTML post and writes the pre-injection original by
 stripping the OSD theme adapter blocks (style + floating bar + scripts).
 
-Used by `/hams-diary --rebuild-remote {slug}` when the repo's `_src/{slug}.html`
+Used by `/hams:diary --rebuild-remote {slug}` when the repo's `_src/{slug}.html`
 backup is missing — the original HTML is reconstructed from the published
 `posts/{slug}.html`, then re-fed through inject_html_adapter for re-themeing.
 

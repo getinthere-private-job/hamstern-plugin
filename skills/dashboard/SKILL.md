@@ -3,7 +3,7 @@ name: dashboard
 description: Hamstern 대시보드 웹 UI 실행 — mom MD를 Opus로 분석해 결정사항 추출 + 2단계 핀으로 decisions.md 확정
 ---
 
-# /hams-dashboard
+# /hams:dashboard
 
 Hamstern 프로젝트 관리 대시보드를 웹 브라우저에서 엽니다.
 
@@ -21,7 +21,7 @@ Hamstern 프로젝트 관리 대시보드를 웹 브라우저에서 엽니다.
 ## 동작 (Claude가 직접 실행)
 
 ```bash
-/hams-dashboard [--port 7777]
+/hams:dashboard [--port 7777]
 ```
 
 Claude 실행 절차:

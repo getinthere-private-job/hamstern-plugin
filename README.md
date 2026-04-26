@@ -2,7 +2,7 @@
 
 | 시나리오 | 핵심 | 점수 | 핵심 약점 |
 |----------|------|------|-----------|
-| A. Dashboard-centric | 대시보드로 가시성 해결 | 7/10 | `/hams-context` 수동 실행 — "볼 수 있다"와 "Claude가 안다"가 분리 |
+| A. Dashboard-centric | 대시보드로 가시성 해결 | 7/10 | `/hams:context` 수동 실행 — "볼 수 있다"와 "Claude가 안다"가 분리 |
 | B. CLAUDE.md 자동 주입 | 새 세션 자동 복구 | 6/10 | 사용자가 볼 창문이 없음, 토큰 누수 |
 | C. 멀티 Claude 통합 | 전체 파이프라인 구조 | 7.5/10 | mom MD 집계 주체 불명확, 충돌 감지 없음 |
 | D. 최적 종합 | A+B+C 장점 통합 | 9/10 | 의미론적 충돌 감지 정확도 |
@@ -15,7 +15,7 @@ D의 핵심 원칙 (가장 중요한 발견)
 
 - decisions.md → CLAUDE.md 자동 동기화
 - 대시보드가 보여주는 것과 Claude가 읽는 것이 동일한 소스
-- 수동 /hams-context 불필요
+- 수동 /hams:context 불필요
 
 구현 순서:
 
@@ -64,7 +64,7 @@ Anthropic이 왜 이 기능을 안 만들었나 — 부정적 시각:
 
 ---
 
-# 🔒 후크 활성화 조건 (`/hams-start`)
+# 🔒 후크 활성화 조건 (`/hams:start`)
 
 햄스턴 플러그인을 설치하면 3개의 후크 (`SessionStart`, `UserPromptSubmit`, `Stop`) 가 등록되지만, **프로젝트 루트에 `.hamstern/` 폴더가 있을 때만** 동작한다. 그 외 프로젝트에선 silent exit — 파일 생성·CLAUDE.md 수정·트랜스크립트 파싱 모두 스킵.
 
@@ -74,21 +74,21 @@ Anthropic이 왜 이 기능을 안 만들었나 — 부정적 시각:
 
 | 명령 | 동작 |
 |------|------|
-| `/hams-start` | 현재 프로젝트에서 햄스턴 활성화 — `.hamstern/{baby,mom,boss}-hamster/` + `config.json` + `README.md` 생성 |
-| `/hams-stop` | 일시 비활성 — `.hamstern/.disabled` 마커 생성 (데이터 보존) |
+| `/hams:start` | 현재 프로젝트에서 햄스턴 활성화 — `.hamstern/{baby,mom,boss}-hamster/` + `config.json` + `README.md` 생성 |
+| `/hams:stop` | 일시 비활성 — `.hamstern/.disabled` 마커 생성 (데이터 보존) |
 | `rm -rf .hamstern` | 완전 제거 (모든 데이터 삭제) |
 
 ```bash
 # 새 프로젝트에서 햄스턴 사용 시작
 cd ~/my-project
 # Claude Code 세션에서:
-/hams-start
+/hams:start
 
 # 잠깐 끄기 (데이터는 그대로)
-/hams-stop
+/hams:stop
 
 # 다시 켜기
-/hams-start
+/hams:start
 ```
 
 ## cmux 툴 (macOS) 과의 공존
@@ -102,7 +102,7 @@ cd ~/my-project
 
 ---
 
-# /hams-diary — 로컬 마크다운으로 운영하는 개인 블로그
+# /hams:diary — 로컬 마크다운으로 운영하는 개인 블로그
 
 `로컬에서 마크다운으로 글을 쓰고`, 명령 하나로 **GitHub Pages 개인 블로그**에 정리·게시하는 도구. 강사·연구자·개발자가 자기 글을 한 곳에 모아 운영하기 좋다.
 
@@ -112,10 +112,10 @@ cd ~/my-project
 
 ```bash
 # 1. 타겟 레포 한 번만 설정
-/hams-diary config repo https://github.com/myuser/my-blog.git
+/hams:diary config repo https://github.com/myuser/my-blog.git
 
 # 2. 첫 글 게시 — 디자인 템플릿 + 블로그 제목을 묻고 빌드
-/hams-diary publish ./hello-world.md 일상
+/hams:diary publish ./hello-world.md 일상
 
 # 3. 브라우저가 자동으로 http://localhost:8765 를 열어준다
 #    → ✅ 게시 / ✏️ 수정 / ❌ 취소
@@ -128,7 +128,7 @@ cd ~/my-project
 ### `publish` — 글 올리기
 
 ```bash
-/hams-diary publish {input} [category] [flags]
+/hams:diary publish {input} [category] [flags]
 ```
 
 | input 형태 | 동작 |
@@ -144,7 +144,7 @@ cd ~/my-project
 ### `edit` — 글 고치기
 
 ```bash
-/hams-diary edit {slug}
+/hams:diary edit {slug}
 #  → 에디터로 _src/{slug}.{ext} 자동 오픈
 #  → 미리보기 + 자동 재빌드 watcher
 #  → 만족하면 ✅ 게시 / ❌ 취소
@@ -155,12 +155,12 @@ cd ~/my-project
 ### `config` — 설정 한 곳
 
 ```bash
-/hams-diary config show                       # 현재 설정 보기
-/hams-diary config repo {github-url}          # 타겟 레포 (1회 필수)
-/hams-diary config template {1-5|name}        # 사이트 디자인 변경
-/hams-diary config search {on|off}            # Pagefind 풀텍스트 검색
-/hams-diary config comments {on|off}          # giscus 댓글 (on=대화형)
-/hams-diary config blog-title "{제목}"        # 블로그 제목 변경
+/hams:diary config show                       # 현재 설정 보기
+/hams:diary config repo {github-url}          # 타겟 레포 (1회 필수)
+/hams:diary config template {1-5|name}        # 사이트 디자인 변경
+/hams:diary config search {on|off}            # Pagefind 풀텍스트 검색
+/hams:diary config comments {on|off}          # giscus 댓글 (on=대화형)
+/hams:diary config blog-title "{제목}"        # 블로그 제목 변경
 ```
 
 ## 5가지 사이트 디자인 템플릿
@@ -202,30 +202,30 @@ python -m http.server 8765 (백그라운드)
 
 ```bash
 # 일기/노트 1개 게시
-/hams-diary publish ./2026-04-26-회고.md 일상
+/hams:diary publish ./2026-04-26-회고.md 일상
 
 # 인터랙티브 시뮬레이터 게시 (라이트/다크 어댑터 자동 주입)
-/hams-diary publish ./sse-simulator.html 기술
+/hams:diary publish ./sse-simulator.html 기술
 
 # 폴더 일괄 게시 — 안에 있는 모든 .md/.html
-/hams-diary publish ./drafts/ 일상
+/hams:diary publish ./drafts/ 일상
 
 # 같은 폴더 다시 실행하면 중복은 자동 skip
 # 한 개만 갱신하고 싶으면:
-/hams-diary publish ./sse-simulator.html 기술 --overwrite
+/hams:diary publish ./sse-simulator.html 기술 --overwrite
 
 # 디자인을 노트북 스타일로 변경
-/hams-diary config template notebook
+/hams:diary config template notebook
 
 # 푸시는 안 하고 워크트리만 남겨 직접 손보기
-/hams-diary publish ./draft.md 일상 --draft
+/hams:diary publish ./draft.md 일상 --draft
 
 # ✏️ 기존 포스트 편집 — 에디터 자동 오픈 + 저장하면 즉시 재빌드
-/hams-diary edit hello-world
+/hams:diary edit hello-world
 
 # 검색·댓글 켜기 (opt-in)
-/hams-diary config search on
-/hams-diary config comments on   # 대화형 — giscus.app 의 4개 값 입력
+/hams:diary config search on
+/hams:diary config comments on   # 대화형 — giscus.app 의 4개 값 입력
 ```
 
 > **편집 모드 전제**: 배포 시점에 원본을 `_src/{slug}.{ext}` 로 백업해 두는 포맷으로 게시된 포스트만 편집 가능. 옛 포맷 포스트는 `publish ... --overwrite` 로 한 번 재배포 후부터.
@@ -236,13 +236,13 @@ python -m http.server 8765 (백그라운드)
 
 | 옛 명령 | 새 명령 |
 |---|---|
-| `/hams-diary {file}` | `/hams-diary publish {file}` |
-| `/hams-diary --edit {slug}` | `/hams-diary edit {slug}` |
-| `/hams-diary --set-repo {url}` | `/hams-diary config repo {url}` |
-| `/hams-diary --set-template {n}` | `/hams-diary config template {n}` |
-| `/hams-diary --enable-search` / `--disable-search` | `/hams-diary config search {on\|off}` |
-| `/hams-diary --enable-comments` / `--disable-comments` | `/hams-diary config comments {on\|off}` |
-| `/hams-diary --rebuild-remote ...` | `/hams-diary publish --rebuild ...` |
+| `/hams:diary {file}` | `/hams:diary publish {file}` |
+| `/hams:diary --edit {slug}` | `/hams:diary edit {slug}` |
+| `/hams:diary --set-repo {url}` | `/hams:diary config repo {url}` |
+| `/hams:diary --set-template {n}` | `/hams:diary config template {n}` |
+| `/hams:diary --enable-search` / `--disable-search` | `/hams:diary config search {on\|off}` |
+| `/hams:diary --enable-comments` / `--disable-comments` | `/hams:diary config comments {on\|off}` |
+| `/hams:diary --rebuild-remote ...` | `/hams:diary publish --rebuild ...` |
 
 ## 🔍 검색 · 💬 댓글 (opt-in)
 
@@ -253,8 +253,8 @@ DB·서버 추가 없이 두 가지를 켤 수 있다. 둘 다 기본 OFF.
 빌드 시점에 모든 포스트의 풀텍스트 인덱스를 정적 파일(`pagefind/`)로 출력. 브라우저가 필요한 인덱스 조각만 fetch 해서 검색. **Algolia·Elasticsearch 같은 외부 서비스 불필요**.
 
 ```bash
-/hams-diary config search on      # Node.js 18+ 필요 (npx pagefind 호출)
-/hams-diary publish ./new.md 일상 # 다음 게시부터 모든 글이 인덱싱됨
+/hams:diary config search on      # Node.js 18+ 필요 (npx pagefind 호출)
+/hams:diary publish ./new.md 일상 # 다음 게시부터 모든 글이 인덱싱됨
 ```
 
 홈 화면에 검색창이 자동으로 생기고, 본문 안 단어로 즉시 결과 매칭.
@@ -267,13 +267,13 @@ DB·서버 추가 없이 두 가지를 켤 수 있다. 둘 다 기본 OFF.
 1. GitHub 레포에서 Discussions 활성화 (Settings → Features)
 2. https://giscus.app 에서 [giscus app 설치 + 설정](https://giscus.app)
 3. 페이지 하단의 `data-repo`, `data-repo-id`, `data-category`, `data-category-id` 4개 값 복사
-4. `/hams-diary config comments on` 실행 → 4개 값 입력
+4. `/hams:diary config comments on` 실행 → 4개 값 입력
 
 이후 모든 포스트 하단에 giscus iframe 자동 임베드. 라이트/다크 토글 시 댓글 영역도 함께 변환.
 
 ```bash
-/hams-diary config comments on    # 대화형 설정
-/hams-diary config comments off   # 끄기 (이미 단 댓글은 GitHub 에 그대로 보존)
+/hams:diary config comments on    # 대화형 설정
+/hams:diary config comments off   # 끄기 (이미 단 댓글은 GitHub 에 그대로 보존)
 ```
 
 ### 의존성 한눈에
@@ -297,7 +297,7 @@ DB·서버 추가 없이 두 가지를 켤 수 있다. 둘 다 기본 OFF.
 
 ## 설정 파일
 
-`~/.claude/hams-diary.json` 한 곳에 모든 설정이 저장된다.
+`~/.claude/hams:diary.json` 한 곳에 모든 설정이 저장된다.
 
 ```json
 {
@@ -319,12 +319,12 @@ DB·서버 추가 없이 두 가지를 켤 수 있다. 둘 다 기본 OFF.
 
 > 버전 관리는 git commit SHA 로 한다 (`/plugin update hams` 가 매 커밋마다 새 버전으로 인식). 아래는 사용자 관점의 굵직한 변화만 정리.
 
-### 2026-04-26 — 후크 프로젝트 스코핑 + `/hams-start` · `/hams-stop`
+### 2026-04-26 — 후크 프로젝트 스코핑 + `/hams:start` · `/hams:stop`
 
 - 후크 3종 (`SessionStart`, `UserPromptSubmit`, `Stop`) 가 `.hamstern/` 폴더 있는 프로젝트에서만 동작
 - 그 외 프로젝트에선 silent exit — 의도치 않은 `.hamstern/baby-hamster/` 생성 / `CLAUDE.md` 수정 차단
-- **`/hams-start`** 신규 — 현재 프로젝트에서 햄스턴 활성화 (`.hamstern/` 트리 + 메타 자동 생성)
-- **`/hams-stop`** 신규 — 일시 비활성 (`.disabled` 마커. 데이터 보존)
+- **`/hams:start`** 신규 — 현재 프로젝트에서 햄스턴 활성화 (`.hamstern/` 트리 + 메타 자동 생성)
+- **`/hams:stop`** 신규 — 일시 비활성 (`.disabled` 마커. 데이터 보존)
 - `SessionStart` 도 `.app-running` defer 추가 — cmux 툴과 공존 시 decisions.md 이중 주입 방지
 - 19개 단위·통합 테스트 추가 (`hooks/test_gate.py`, `hooks/test_all_hooks_gated.py`)
 
@@ -344,16 +344,16 @@ DB·서버 추가 없이 두 가지를 켤 수 있다. 둘 다 기본 OFF.
 
 - `--enable-search` / `--disable-search` 추가 — Pagefind 풀텍스트 검색
   ```bash
-  /hams-diary --enable-search
-  /hams-diary ./new-post.md 강의   # 다음 배포부터 모든 포스트 자동 인덱싱
+  /hams:diary --enable-search
+  /hams:diary ./new-post.md 강의   # 다음 배포부터 모든 포스트 자동 인덱싱
   ```
   홈에 검색창 자동 생성. Node.js 18+ 필요. DB 0개.
 - `--enable-comments` / `--disable-comments` 추가 — giscus(GitHub Discussions) 댓글
   ```bash
-  /hams-diary --enable-comments    # 대화형 — giscus.app 의 4개 data-* 값 입력
+  /hams:diary --enable-comments    # 대화형 — giscus.app 의 4개 data-* 값 입력
   ```
   포스트 하단에 자동 임베드. 라이트/다크 토글과 동기화.
-- `~/.claude/hams-diary.json` 에 `features` 객체 추가 (`{search, comments}`).
+- `~/.claude/hams:diary.json` 에 `features` 객체 추가 (`{search, comments}`).
 
 ### 2026-04-26 — HTML 시뮬레이터 양방향 톤 변환
 
@@ -363,9 +363,9 @@ DB·서버 추가 없이 두 가지를 켤 수 있다. 둘 다 기본 OFF.
 
 ### 2026-04-26 — 편집 모드 (`--edit`)
 
-- `/hams-diary --edit {slug}` 신설 — 기존 포스트 한 글자 고치는 데 30초
+- `/hams:diary --edit {slug}` 신설 — 기존 포스트 한 글자 고치는 데 30초
   ```bash
-  /hams-diary --edit msa-k8s-websocket
+  /hams:diary --edit msa-k8s-websocket
   #  → 에디터로 _src/{slug}.{ext} 자동 오픈
   #  → 미리보기 서버 + 브라우저 자동 표시
   #  → 저장할 때마다 watcher 가 자동 재빌드 ([HH:MM:SS] rebuilt 출력)
@@ -393,7 +393,7 @@ DB·서버 추가 없이 두 가지를 켤 수 있다. 둘 다 기본 OFF.
 
 - `marketplace.json` 에 `./skills/diary` 등록 누락 수정
 - SKILL.md 의 `name: hams-diary` → `name: diary` 정정 (플러그인 시스템이 자동으로 `hams-` prefix 추가)
-- README 가 의사결정 분석 노트뿐이던 상태에서 `/hams-diary` 사용 가이드를 갖춘 본격 README 로 정리
+- README 가 의사결정 분석 노트뿐이던 상태에서 `/hams:diary` 사용 가이드를 갖춘 본격 README 로 정리
 
 ---
 

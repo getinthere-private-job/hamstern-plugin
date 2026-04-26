@@ -5,9 +5,9 @@ description: |
   배포 전 로컬 미리보기 서버로 검수하고 승인 후에만 푸시한다.
   강사·연구자·개발자가 자기 글을 한 곳에 모아 운영하기 좋다.
   사용법:
-    /hams-diary publish {file|dir|glob} [category]   # 게시 (단일/일괄 자동 감지)
-    /hams-diary edit {slug}                           # 편집
-    /hams-diary config <subcommand>                   # 설정
+    /hams:diary publish {file|dir|glob} [category]   # 게시 (단일/일괄 자동 감지)
+    /hams:diary edit {slug}                           # 편집
+    /hams:diary config <subcommand>                   # 설정
 allowed-tools:
   - Bash
   - Read
@@ -18,7 +18,7 @@ allowed-tools:
   - PowerShell
 ---
 
-# /hams-diary
+# /hams:diary
 
 로컬에서 작성한 마크다운·HTML 파일을 **GitHub Pages 개인 블로그**에 정리·게시하는 도구. 글쓰기는 익숙한 에디터에서 하고, 정리·배포·검수만 자동화한다.
 
@@ -38,14 +38,14 @@ allowed-tools:
 ### `publish` — 글 올리기
 
 ```bash
-/hams-diary publish {input} [category] [flags]
+/hams:diary publish {input} [category] [flags]
 
 # input 자동 감지
-/hams-diary publish ./post.md 일상           # 단일 마크다운
-/hams-diary publish ./simulator.html 강의    # 단일 HTML
-/hams-diary publish ./drafts/ 일상           # 폴더 일괄 (.md + .html)
-/hams-diary publish "*.md" 일상              # 글롭 일괄
-/hams-diary publish --rebuild all            # 로컬 원본 없이 사이트 글 재테마
+/hams:diary publish ./post.md 일상           # 단일 마크다운
+/hams:diary publish ./simulator.html 강의    # 단일 HTML
+/hams:diary publish ./drafts/ 일상           # 폴더 일괄 (.md + .html)
+/hams:diary publish "*.md" 일상              # 글롭 일괄
+/hams:diary publish --rebuild all            # 로컬 원본 없이 사이트 글 재테마
 
 # 플래그
 --no-theme         # HTML 어댑터 주입 끄기
@@ -60,7 +60,7 @@ allowed-tools:
 ### `edit` — 글 고치기
 
 ```bash
-/hams-diary edit {slug}
+/hams:diary edit {slug}
 # → 에디터에서 _src/{slug}.{ext} 자동 오픈
 # → 미리보기 서버 + 브라우저 자동 표시
 # → 저장하면 watcher 가 자동 재빌드
@@ -70,12 +70,12 @@ allowed-tools:
 ### `config` — 설정 한 곳
 
 ```bash
-/hams-diary config show                       # 현재 설정 표시
-/hams-diary config repo {github-url}          # 타겟 레포 (1회 필수)
-/hams-diary config template {1-5|name}        # 사이트 디자인 변경
-/hams-diary config search {on|off}            # Pagefind 풀텍스트 검색
-/hams-diary config comments {on|off}          # giscus 댓글 (on 은 대화형)
-/hams-diary config blog-title "{title}"       # 블로그 제목 변경
+/hams:diary config show                       # 현재 설정 표시
+/hams:diary config repo {github-url}          # 타겟 레포 (1회 필수)
+/hams:diary config template {1-5|name}        # 사이트 디자인 변경
+/hams:diary config search {on|off}            # Pagefind 풀텍스트 검색
+/hams:diary config comments {on|off}          # giscus 댓글 (on 은 대화형)
+/hams:diary config blog-title "{title}"       # 블로그 제목 변경
 ```
 
 ---
@@ -86,21 +86,21 @@ allowed-tools:
 
 | 구 명령 | 신 명령 |
 |---|---|
-| `/hams-diary {file} [cat]` (서브명령 없음) | `/hams-diary publish {file} [cat]` |
-| `/hams-diary --edit {slug}` | `/hams-diary edit {slug}` |
-| `/hams-diary --set-repo {url}` | `/hams-diary config repo {url}` |
-| `/hams-diary --set-template {n}` | `/hams-diary config template {n}` |
-| `/hams-diary --enable-search` / `--disable-search` | `/hams-diary config search {on\|off}` |
-| `/hams-diary --enable-comments` / `--disable-comments` | `/hams-diary config comments {on\|off}` |
-| `/hams-diary --rebuild-remote ...` | `/hams-diary publish --rebuild ...` |
+| `/hams:diary {file} [cat]` (서브명령 없음) | `/hams:diary publish {file} [cat]` |
+| `/hams:diary --edit {slug}` | `/hams:diary edit {slug}` |
+| `/hams:diary --set-repo {url}` | `/hams:diary config repo {url}` |
+| `/hams:diary --set-template {n}` | `/hams:diary config template {n}` |
+| `/hams:diary --enable-search` / `--disable-search` | `/hams:diary config search {on\|off}` |
+| `/hams:diary --enable-comments` / `--disable-comments` | `/hams:diary config comments {on\|off}` |
+| `/hams:diary --rebuild-remote ...` | `/hams:diary publish --rebuild ...` |
 
 내부 동작은 동일하므로 기존 워크플로우는 그대로 작동한다. README/문서는 신 명령 기준으로 작성한다.
 
 # 기능 토글 (opt-in)
-/hams-diary --enable-search                     # Pagefind 풀텍스트 검색 켜기
-/hams-diary --disable-search                    # 검색 끄기
-/hams-diary --enable-comments                   # giscus 댓글 켜기 (대화형)
-/hams-diary --disable-comments                  # 댓글 끄기
+/hams:diary --enable-search                     # Pagefind 풀텍스트 검색 켜기
+/hams:diary --disable-search                    # 검색 끄기
+/hams:diary --enable-comments                   # giscus 댓글 켜기 (대화형)
+/hams:diary --disable-comments                  # 댓글 끄기
 ```
 
 ---
@@ -111,7 +111,7 @@ allowed-tools:
 
 ```bash
 python3 -c "import json; d={'repo':'<URL>','template':'tech'}; \
-  json.dump(d, open('$HOME/.claude/hams-diary.json','w'))"
+  json.dump(d, open('$HOME/.claude/hams:diary.json','w'))"
 ```
 저장 후 종료. URL 파싱은 기존과 동일 (`https://github.com/owner/repo.git` → owner/repo).
 
@@ -120,7 +120,7 @@ python3 -c "import json; d={'repo':'<URL>','template':'tech'}; \
 ```bash
 # 1-5 숫자 또는 이름(minimal/tech/lecture/notebook/magazine) 입력 허용
 TEMPLATES = ['minimal','tech','lecture','notebook','magazine']
-# 사용자 입력 검증 → ~/.claude/hams-diary.json 의 template 필드만 업데이트
+# 사용자 입력 검증 → ~/.claude/hams:diary.json 의 template 필드만 업데이트
 ```
 
 저장 후 종료.
@@ -136,7 +136,7 @@ fi
 npx -y pagefind --version 2>/dev/null   # 사전 다운로드(첫 실행만 시간 걸림)
 
 # 2) features.search 토글
-python3 -c "import json; p='$HOME/.claude/hams-diary.json'; \
+python3 -c "import json; p='$HOME/.claude/hams:diary.json'; \
   d=json.load(open(p)); d.setdefault('features',{}); \
   d['features']['search']=$ENABLE; json.dump(d, open(p,'w'))"
 ```
@@ -155,7 +155,7 @@ python3 -c "import json; p='$HOME/.claude/hams-diary.json'; \
      2. Repository 입력 (예: owner/blog)
      3. Discussion category 선택 (Announcements 권장)
      4. 페이지 하단의 data-* 4개 값(repo / repo-id / category / category-id)을 복사
-     5. /hams-diary --enable-comments 다시 실행해 입력
+     5. /hams:diary --enable-comments 다시 실행해 입력
      ```
    - 있음 → AskUserQuestion 4번 (data-repo, data-repo-id, data-category, data-category-id)
 2. `features.comments` 객체에 저장:
@@ -168,7 +168,7 @@ python3 -c "import json; p='$HOME/.claude/hams-diary.json'; \
 
 ### 일반 실행
 
-`~/.claude/hams-diary.json` Read:
+`~/.claude/hams:diary.json` Read:
 ```json
 {
   "repo": "...",
@@ -574,11 +574,11 @@ git worktree remove --force "$WORKTREE_DIR"
 ### 흐름
 
 ```
-[1] /hams-diary --edit msa-k8s-websocket
+[1] /hams:diary --edit msa-k8s-websocket
 [2] 레포 clone/pull → 워크트리 생성
 [3] posts.json 에서 slug 검색 → sourcePath 확인
     sourcePath 없음 → "이 포스트는 _src/ 백업이 없습니다.
-                       원본 파일을 다시 /hams-diary {file} --overwrite 로
+                       원본 파일을 다시 /hams:diary {file} --overwrite 로
                        배포해 주세요." 안내 후 종료
 [4] 기본 에디터로 _src/{slug}.{ext} 열기
 [5] python -m http.server $PORT 백그라운드 실행
@@ -597,7 +597,7 @@ git worktree remove --force "$WORKTREE_DIR"
 
 ### `_src/` 가 없는 기존 포스트
 
-`/hams-diary` v1 시절(즉, `_src/` 백업 도입 이전)에 게시된 포스트는 `posts/{slug}.html` 의 빌드 결과만 레포에 있다. 처리 경로:
+`/hams:diary` v1 시절(즉, `_src/` 백업 도입 이전)에 게시된 포스트는 `posts/{slug}.html` 의 빌드 결과만 레포에 있다. 처리 경로:
 
 - **HTML 시뮬레이터**: `--rebuild-remote {slug}` 가 자동으로 `extract_original_html.py` 를 돌려 어댑터 마커 사이 블록을 제거 → 원본 복원 → `_src/` 에 저장 → 어댑터 재주입. 손에 원본 파일 없어도 됨.
 - **MD 였던 포스트**: 역변환 비신뢰 (HTML→MD 손실). 원본 `.md` 가 손에 있다면 `--overwrite` 로 재배포해 `_src/` 백업 생성. 없으면 skip + 경고.
@@ -636,9 +636,9 @@ WATCHER_PID=$!
 ### 호출 형태
 
 ```bash
-/hams-diary --rebuild-remote msa-k8s-websocket          # 단일
-/hams-diary --rebuild-remote all                        # 전체
-/hams-diary --rebuild-remote --category msa             # 카테고리
+/hams:diary --rebuild-remote msa-k8s-websocket          # 단일
+/hams:diary --rebuild-remote all                        # 전체
+/hams:diary --rebuild-remote --category msa             # 카테고리
 ```
 
 ### 흐름
@@ -725,7 +725,7 @@ python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
 - [ ] `--set-template` 분기 — JSON 갱신 후 종료
 - [ ] `--edit {slug}` 분기 — 편집 모드 흐름(아래 별도 섹션)으로 진입
 - [ ] `--rebuild-remote {slug|all|--category X}` 분기 — 재빌드 모드 흐름(아래 별도 섹션)으로 진입
-- [ ] `~/.claude/hams-diary.json` Read (없으면 AskUserQuestion)
+- [ ] `~/.claude/hams:diary.json` Read (없으면 AskUserQuestion)
 - [ ] REPO_URL, OWNER, NAME, PAGES_URL, TEMPLATE, LOCAL_DIR, WORKTREE_DIR, BASE_BRANCH 결정
 - [ ] **JOBS 배열 구성** — 단일/디렉토리/글롭 분기, 한글 파일명 PowerShell 폴백
 - [ ] 각 job 메타 추출 (title/summary/tags/slug/category, **originalFilename**)
@@ -793,7 +793,7 @@ python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
 
 ## 참고
 
-- 설정: `~/.claude/hams-diary.json` (`{repo, template, pagesUrl?, features?}`)
+- 설정: `~/.claude/hams:diary.json` (`{repo, template, pagesUrl?, features?}`)
 - 템플릿: `${PLUGIN_ROOT}/skills/diary/templates/{minimal|tech|lecture|notebook|magazine}/`
 - HTML 어댑터 빌더: `${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py`
 - HTML 어댑터 역추출: `${PLUGIN_ROOT}/skills/diary/extract_original_html.py` (재빌드 모드 fallback)

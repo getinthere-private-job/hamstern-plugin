@@ -83,4 +83,4 @@ model: opus
 
 ---
 
-**Tip:** "이런 상황에는 뭘 쓸까?" 하고 생각날 때마다 `/hams-skill-picker`를 쓰세요!
+**Tip:** "이런 상황에는 뭘 쓸까?" 하고 생각날 때마다 `/hams:skill-picker`를 쓰세요!

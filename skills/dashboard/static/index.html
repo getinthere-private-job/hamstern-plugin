@@ -107,7 +107,7 @@ function renderBaby(files) {
 
 function renderDecisions(content) {
   const el = document.getElementById('decisions-list');
-  if (!content) { el.innerHTML = '<div class="empty">없음<br><small>/hams-dashboard → 재분석 → 확정</small></div>'; return; }
+  if (!content) { el.innerHTML = '<div class="empty">없음<br><small>/hams:dashboard → 재분석 → 확정</small></div>'; return; }
   const items = content.split('\n').filter(l => l.startsWith('- '));
   if (!items.length) { el.innerHTML = '<div class="empty">없음</div>'; return; }
   el.innerHTML = items.map((item, i) =>

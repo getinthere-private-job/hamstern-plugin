@@ -6,7 +6,7 @@ allowed-tools:
   - Bash
 ---
 
-# /hams-context
+# /hams:context
 
 프로젝트의 확정된 결정사항을 CLAUDE.md에 주입합니다.
 
@@ -19,7 +19,7 @@ allowed-tools:
 ## 실행
 
 ```bash
-/hams-context
+/hams:context
 ```
 
 ## 출력 예시
@@ -34,7 +34,7 @@ CLAUDE.md 마커 섹션 업데이트 완료.
 decisions.md 없을 때:
 ```
 decisions.md 없음.
-/hams-dashboard를 먼저 실행해 결정사항을 확정하세요.
+/hams:dashboard를 먼저 실행해 결정사항을 확정하세요.
 ```
 
 ## 자동화

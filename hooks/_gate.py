@@ -21,7 +21,7 @@ def is_hamstern_project(cwd: Optional[str]) -> bool:
       - `.hamstern/.disabled` does NOT exist (toggle-off marker)
 
     The `.hamstern/` directory doubles as both data store and activation
-    marker — hamstern itself creates it on first use via /hams-start.
+    marker — hamstern itself creates it on first use via /hams:start.
     """
     if not cwd:
         return False
