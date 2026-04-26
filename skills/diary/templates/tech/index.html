@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{BLOG_TITLE}}</title>
+<meta name="description" content="{{BLOG_TAGLINE}}" />
+<link rel="stylesheet" href="assets/style.css" />
+<script>
+  (function(){
+    try {
+      var t = localStorage.getItem('blog-theme');
+      if (!t) { t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+      document.documentElement.setAttribute('data-theme', t);
+    } catch(e){}
+  })();
+</script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-brand" href="./">
+        <span class="site-brand__logo">◆</span>
+        <span class="site-brand__name">{{BLOG_TITLE}}</span>
+      </a>
+      <nav class="site-nav">
+        <a href="#posts">Posts</a>
+        <a href="#about">About</a>
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="테마 전환">
+          <span class="theme-toggle__icon theme-toggle__icon--sun">☀</span>
+          <span class="theme-toggle__icon theme-toggle__icon--moon">☾</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="site-main">
+    <section class="hero">
+      <div class="hero__inner">
+        <p class="hero__eyebrow">Tech Diary</p>
+        <h1 class="hero__title">{{BLOG_HERO_TITLE}}</h1>
+        <p class="hero__lede">{{BLOG_TAGLINE}}</p>
+        <div class="hero__categories" id="hero-categories"></div>
+      </div>
+    </section>
+
+    <section class="posts" id="posts">
+      <div class="posts__header">
+        <h2 class="posts__title">최근 글</h2>
+        <div class="posts__filter" id="posts-filter"></div>
+      </div>
+      <ul class="posts__list" id="posts-list"></ul>
+    </section>
+
+    <section class="about" id="about">
+      <div class="about__inner">
+        <h2>About</h2>
+        <p>{{BLOG_ABOUT}}</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="site-footer__inner">
+      <span>© {{BLOG_YEAR}} {{BLOG_TITLE}}</span>
+      <span>Built with curiosity & coffee ☕</span>
+    </div>
+  </footer>
+
+  <script src="assets/script.js"></script>
+</body>
+</html>

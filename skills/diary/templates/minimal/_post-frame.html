@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{POST_TITLE}} — {{BLOG_TITLE}}</title>
+<link rel="stylesheet" href="../assets/style.css" />
+<style>
+  .article { max-width: 720px; margin: 0 auto; padding: 56px 24px 96px; }
+  .article h1 { font-size: clamp(26px, 4vw, 38px); letter-spacing: -1px; line-height: 1.2; margin: 16px 0; }
+  .article .meta { font-family: var(--sans); font-size: 13px; color: var(--muted); }
+  .article .body { margin-top: 36px; font-size: 17px; }
+  .article .body h2 { margin: 36px 0 14px; font-size: 24px; }
+  .article .body h3 { margin: 28px 0 10px; font-size: 19px; }
+  .article .body p { margin: 14px 0; }
+  .article .body code { background: var(--border); padding: 2px 6px; border-radius: 3px; font-family: ui-monospace, monospace; font-size: 0.9em; }
+  .article .body pre { background: var(--border); padding: 14px; border-radius: 6px; overflow-x: auto; }
+  .article .body pre code { background: transparent; }
+  .article .body a { color: var(--accent); }
+  .article .body blockquote { border-left: 3px solid var(--accent); padding-left: 14px; color: var(--muted); }
+  .back { font-family: var(--sans); font-size: 13px; color: var(--muted); display: inline-block; margin-bottom: 8px; }
+</style>
+<script>(function(){ try { var t = localStorage.getItem('blog-theme') || 'light'; document.documentElement.setAttribute('data-theme', t); } catch(e){} })();</script>
+</head>
+<body>
+<article class="article">
+  <a class="back" href="../index.html">← {{BLOG_TITLE}}</a>
+  <span class="post-item__category">{{POST_CATEGORY}}</span>
+  <h1>{{POST_TITLE}}</h1>
+  <div class="meta"><time>{{POST_DATE}}</time></div>
+  <div class="body">
+{{POST_HTML}}
+  </div>
+</article>
+</body>
+</html>

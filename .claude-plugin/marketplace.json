@@ -18,8 +18,8 @@
         "./skills/audit-decisions",
         "./skills/registry-collector",
         "./skills/context",
-        "./skills/diary",
-        "./skills/why"
+        "./skills/why",
+        "./skills/diary"
       ]
     }
   ]

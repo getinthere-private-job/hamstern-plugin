@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{POST_TITLE}} — {{BLOG_TITLE}}</title>
+<link rel="stylesheet" href="../assets/style.css" />
+<style>
+  .nb-article { max-width: 880px; margin: 0 auto; padding: 32px 48px 96px; }
+  .nb-article .nb-back { font-family: var(--mono); font-size: 12.5px; color: var(--muted); display: inline-block; margin-bottom: 14px; }
+  .nb-article h1 { font-family: var(--mono); font-size: clamp(22px, 3.5vw, 32px); margin: 12px 0 18px; line-height: 1.25; }
+  .nb-article .meta { font-family: var(--mono); font-size: 12px; color: var(--code); margin-bottom: 24px; }
+  .nb-article .body { font-size: 15.5px; line-height: 1.8; }
+  .nb-article .body h2 { font-family: var(--mono); font-size: 22px; margin: 32px 0 12px; }
+  .nb-article .body h3 { font-family: var(--mono); font-size: 18px; margin: 24px 0 10px; }
+  .nb-article .body p { margin: 12px 0; }
+  .nb-article .body code { background: var(--bg-cell); border: 1px solid var(--border); padding: 1px 6px; border-radius: 3px; font-family: var(--mono); font-size: 0.92em; color: var(--code); }
+  .nb-article .body pre { background: var(--bg-cell); border: 1px solid var(--border); padding: 14px 18px; border-radius: 6px; overflow-x: auto; border-left: 4px solid var(--accent); }
+  .nb-article .body pre code { background: transparent; border: 0; color: inherit; padding: 0; }
+</style>
+<script>(function(){ try { var t = localStorage.getItem('blog-theme') || 'light'; document.documentElement.setAttribute('data-theme', t); } catch(e){} })();</script>
+</head>
+<body style="background: var(--bg);">
+<article class="nb-article">
+  <a class="nb-back" href="../index.html">← cd ..</a>
+  <div class="meta">In [01]: # {{POST_CATEGORY}} · {{POST_DATE}}</div>
+  <h1>{{POST_TITLE}}</h1>
+  <div class="body">
+{{POST_HTML}}
+  </div>
+</article>
+</body>
+</html>

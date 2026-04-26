@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{BLOG_TITLE}}</title>
+<link rel="stylesheet" href="assets/style.css" />
+<script>(function(){ try { var t = localStorage.getItem('blog-theme') || 'light'; document.documentElement.setAttribute('data-theme', t); } catch(e){} })();</script>
+</head>
+<body>
+  <header class="mag-top">
+    <div class="mag-top__inner">
+      <a class="mag-brand" href="./">{{BLOG_TITLE}}</a>
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="테마 전환">◐</button>
+    </div>
+    <p class="mag-date" id="mag-date"></p>
+  </header>
+
+  <section class="mag-feature" id="mag-feature"></section>
+  <main class="mag-grid" id="posts-grid"></main>
+
+  <footer class="mag-foot"><span>© {{BLOG_YEAR}} {{BLOG_TITLE}}</span></footer>
+  <script src="assets/script.js"></script>
+</body>
+</html>

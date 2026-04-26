@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{BLOG_TITLE}}</title>
+<link rel="stylesheet" href="assets/style.css" />
+<script>
+  (function(){ try { var t = localStorage.getItem('blog-theme') || 'light'; document.documentElement.setAttribute('data-theme', t); } catch(e){} })();
+</script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead__inner">
+      <a class="brand" href="./">{{BLOG_TITLE}}</a>
+      <button id="theme-toggle" class="theme-toggle" type="button" aria-label="테마 전환">◐</button>
+    </div>
+    <p class="tagline">{{BLOG_TAGLINE}}</p>
+  </header>
+
+  <main class="container">
+    <ul id="posts-list" class="posts"></ul>
+  </main>
+
+  <footer class="footer"><span>© {{BLOG_TITLE}}</span></footer>
+  <script src="assets/script.js"></script>
+</body>
+</html>

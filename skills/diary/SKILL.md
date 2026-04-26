@@ -1,11 +1,14 @@
 ---
 name: diary
 description: |
-  마크다운 파일을 임의의 GitHub Pages 레포에 자동 배포.
-  타겟 레포는 ~/.claude/hams-diary.json 에 설정. --set-repo 로 변경 가능.
-  git worktree 자동 생성/관리, posts.json 수정, HTML 변환을 일괄 처리.
-  사용법: /hams-diary {md파일경로} [카테고리명 (옵션)]
-         /hams-diary --set-repo {github-repo-url}
+  로컬 마크다운(.md) 또는 HTML 시뮬레이터(.html)를 GitHub Pages 블로그에 배포한다.
+  배포 전 로컬 미리보기 서버를 띄워 브라우저로 검수하고 사용자가 승인한 후에만 푸시한다.
+  배치 모드(폴더/글롭)와 5가지 사이트 디자인 템플릿(minimal, tech, lecture, notebook, magazine)을 지원한다.
+  강의자료 일괄 배포에 최적화되어 있다.
+  사용법:
+    /hams-diary {file.md|file.html|dir/|glob} [category]
+    /hams-diary --set-repo {github-url}
+    /hams-diary --set-template {1-5|name}
 allowed-tools:
   - Bash
   - Read
@@ -13,422 +16,411 @@ allowed-tools:
   - Edit
   - Glob
   - AskUserQuestion
+  - PowerShell
 ---
 
-# /hams-diary Skill
+# /hams-diary
 
-## 개요
+로컬 강의자료(MD 또는 인터랙티브 HTML)를 GitHub Pages 블로그에 게시한다. 핵심 차별점:
 
-마크다운 파일을 설정된 GitHub Pages 레포에 자동으로 게시합니다.
-타겟 레포는 `~/.claude/hams-diary.json` 에서 관리합니다.
-
-**한 번에 처리되는 작업:**
-
-- ✅ 마크다운 파일을 HTML로 변환
-- ✅ 제목, 요약, 태그 자동 추출
-- ✅ 카테고리 자동 결정 (기존/신규)
-- ✅ posts.json 업데이트
-- ✅ git worktree 생성 → 작업 → 푸시 → 정리
-- ✅ **자동 PR 생성 & merge** (GitHub Pages 자동 배포)
-- ✅ 완료 시 블로그 URL 제공
+1. **3가지 입력 모드** — 마크다운, HTML 시뮬레이터, 폴더/글롭 일괄 배포
+2. **목업 → 승인 게이트** — 로컬에서 빌드 후 `python -m http.server` 로 브라우저 미리보기, 사용자 승인 후에만 commit/push/merge
+3. **5가지 디자인 템플릿** — `minimal`, `tech`, `lecture`, `notebook`, `magazine` 중 선택
+4. **중복 자동 제외** — 배치 모드에서 같은 slug 의 포스트는 skip (--overwrite 로 강제)
 
 ---
 
 ## 사용 방법
 
 ```bash
-/hams-diary {파일경로} [카테고리명]        # 포스트 배포
-/hams-diary --set-repo {github-repo-url}  # 타겟 레포 설정/변경
-```
+/hams-diary --set-repo {url}                    # 1. 타겟 레포 설정
+/hams-diary --set-template {1-5|name}           # 2. 템플릿 선택
+/hams-diary {file.md} [category]                # 3. 마크다운 1개 배포
+/hams-diary {file.html} [category]              # 4. HTML 시뮬레이터 1개 배포
+/hams-diary {dir/} [category]                   # 5. 폴더 일괄 배포
+/hams-diary "{glob}" [category]                 # 6. 글롭 일괄 배포 (예: "*.html")
 
-**예시:**
-
-```bash
-# 레포 최초 설정
-/hams-diary --set-repo https://github.com/myuser/my-blog.git
-
-# 이후 일반 사용
-/hams-diary /path/to/post.md
-/hams-diary /path/to/post.md Development
+# 플래그
+/hams-diary {input} --no-theme                  # HTML 어댑터 주입 끄기
+/hams-diary {input} --overwrite                 # 기존 동일 slug 덮어쓰기
+/hams-diary {input} --draft                     # 푸시하지 않고 워크트리만 남김
+/hams-diary {input} --preview-port 9000         # 미리보기 서버 포트 변경 (기본 8765)
 ```
 
 ---
 
-## 동작 순서
+## 0️⃣ 인자 해석 & 설정 확인
 
-### 0️⃣ 설정 파일 확인
-
-**`--set-repo` 플래그가 있는 경우:**
+### `--set-repo {url}` 분기
 
 ```bash
-# JSON 저장
-python3 -c "import json; json.dump({'repo': '<입력된 URL>'}, open('$HOME/.claude/hams-diary.json', 'w'))"
+python3 -c "import json; d={'repo':'<URL>','template':'tech'}; \
+  json.dump(d, open('$HOME/.claude/hams-diary.json','w'))"
 ```
+저장 후 종료. URL 파싱은 기존과 동일 (`https://github.com/owner/repo.git` → owner/repo).
 
-- URL에서 레포명 추출: `https://github.com/owner/repo.git` → `repo`
-- pagesUrl 자동 추론: `https://owner.github.io/repo/`
-- 저장 후 종료 (파일 배포 없이)
-
-> **참고:** 커스텀 도메인을 사용할 경우, `~/.claude/hams-diary.json`을 직접 편집하여 `"pagesUrl"` 필드를 추가할 수 있습니다:
-> ```json
-> {
->   "repo": "https://github.com/owner/repo.git",
->   "pagesUrl": "https://mycustom.domain/"
-> }
-> ```
-
-출력:
-```
-✅ 설정 완료!
-   레포: https://github.com/owner/repo.git
-   블로그: https://owner.github.io/repo/
-   
-이제 /hams-diary {파일경로} 로 배포할 수 있습니다.
-```
-
-**일반 실행인 경우 (`--set-repo` 없음):**
-
-`~/.claude/hams-diary.json` 파일을 읽는다:
+### `--set-template {value}` 분기
 
 ```bash
-cat ~/.claude/hams-diary.json
-REPO_URL=$(python3 -c "import sys,json; print(json.load(open('$HOME/.claude/hams-diary.json'))['repo'])")
-# pagesUrl이 있으면 추출 (없으면 빈 문자열)
-PAGES_URL_OVERRIDE=$(python3 -c "import sys,json; d=json.load(open('$HOME/.claude/hams-diary.json')); print(d.get('pagesUrl',''))" 2>/dev/null || echo "")
+# 1-5 숫자 또는 이름(minimal/tech/lecture/notebook/magazine) 입력 허용
+TEMPLATES = ['minimal','tech','lecture','notebook','magazine']
+# 사용자 입력 검증 → ~/.claude/hams-diary.json 의 template 필드만 업데이트
 ```
 
-파일이 없으면 AskUserQuestion으로 URL을 입력받아 저장 후 계속:
+저장 후 종료.
 
-```
-설정된 타겟 레포가 없습니다.
-배포할 GitHub 레포 URL을 입력해주세요:
-(예: https://github.com/myuser/my-blog.git)
-```
+### 일반 실행
 
-입력 후:
-```bash
-python3 -c "import json; json.dump({'repo': '<입력된 URL>'}, open('$HOME/.claude/hams-diary.json', 'w'))"
-```
-
-**설정에서 추출하는 값:**
-
-| 변수 | 추출 방법 | 예시 |
-|------|-----------|------|
-| `REPO_URL` | `repo` 필드 그대로 | `https://github.com/owner/repo.git` |
-| `REPO_NAME` | URL에서 마지막 경로 + `.git` 제거 | `repo` |
-| `REPO_OWNER` | URL에서 owner 추출 | `owner` |
-| `PAGES_URL` | `pagesUrl` 필드 or 자동 추론 | `https://owner.github.io/repo/` |
-| `LOCAL_DIR` | `/tmp/{REPO_NAME}` | `/tmp/repo` |
-| `WORKTREE_DIR` | `/tmp/{REPO_NAME}-{id}` | `/tmp/repo-my-post` |
-
-**URL 파싱 로직:**
-
-HTTPS: `https://github.com/owner/repo.git`
-```bash
-REPO_OWNER=$(echo "$REPO_URL" | sed 's|https://github.com/||' | cut -d'/' -f1)
-REPO_NAME=$(echo "$REPO_URL" | sed 's|/$||; s|.*/||; s|\.git$||')
-```
-
-SSH: `git@github.com:owner/repo.git`
-```bash
-REPO_OWNER=$(echo "$REPO_URL" | sed 's|git@github.com:||' | cut -d'/' -f1)
-REPO_NAME=$(echo "$REPO_URL" | sed 's|/$||; s|.*/||; s|\.git$||')
-```
-
-pagesUrl 자동 추론:
-```bash
-PAGES_URL="https://${REPO_OWNER}.github.io/${REPO_NAME}/"
-```
-`pagesUrl` 필드가 설정 파일에 있으면 그 값을 우선 사용.
-
-### 1️⃣ 파일 분석
-
-- MD 파일 읽기
-- 제목 추출 (첫 번째 h1 마크다운 `# 제목`)
-- 요약 추출 (frontmatter 또는 첫 단락)
-- 태그 추출 (섹션 헤딩, 코드 블록 키워드)
-- **카테고리**: 인자로 받거나 자동 추론
-
-### 2️⃣ 레포 준비
-
-- `{LOCAL_DIR}` 디렉토리 확인 (= `/tmp/{REPO_NAME}`)
-- 없으면: `git clone {REPO_URL} {LOCAL_DIR}`
-- 있으면: `cd {LOCAL_DIR} && git pull origin {BASE_BRANCH}`
-
-### 3️⃣ ID 생성
-
-파일명을 kebab-case로 정규화:
-
-```
-SEOLAP_MARKETING_GUIDE.md → seolap-marketing-guide
-my-blog-post.md          → my-blog-post
-```
-
-### 4️⃣ Git Worktree 생성
-
-```bash
-cd {LOCAL_DIR}
-BASE_BRANCH=$(git remote show origin | grep 'HEAD branch' | sed 's/.*: //')
-git worktree add -b post-{id} {WORKTREE_DIR}
-cd {WORKTREE_DIR}
-```
-
-`BASE_BRANCH` 는 이 시점에서 결정되며 이후 PR 생성(`--base {BASE_BRANCH}`)에 사용된다.
-
-### 5️⃣ posts.json 업데이트
-
-**카테고리 처리:**
-
-- 기존 categories[] 에 없으면 추가
-- 있으면 그대로 사용
-
-**포스트 항목 추가 (배열 맨 앞):**
-
+`~/.claude/hams-diary.json` Read:
 ```json
+{ "repo": "...", "template": "tech", "pagesUrl": "..." }
+```
+
+파일 없으면 AskUserQuestion 으로 URL 입력받고 저장 → 계속.
+`template` 필드 없으면 첫 배포 시 AskUserQuestion 으로 5개 중 선택받고 저장.
+
+추출 변수:
+| 변수 | 값 |
+|---|---|
+| `REPO_URL` | `repo` 필드 |
+| `REPO_OWNER`, `REPO_NAME` | URL 파싱 |
+| `PAGES_URL` | `pagesUrl` 필드 또는 `https://${OWNER}.github.io/${NAME}/` |
+| `TEMPLATE` | `template` 필드 (기본 `tech`) |
+| `LOCAL_DIR` | `/tmp/${REPO_NAME}` |
+| `WORKTREE_DIR` | `/tmp/${REPO_NAME}-preview-${TS}` (배포마다 새로 생성) |
+
+---
+
+## 1️⃣ 입력 분류 & Job 목록 생성
+
+입력 인자를 분석해 **JOBS** 배열을 만든다. 각 job:
+
+```python
 {
-  "id": "{id}",
-  "title": "{추출된 제목}",
-  "date": "2026-04-11",  // 오늘 날짜
-  "category": "{카테고리}",
-  "summary": "{요약}",
-  "filename": "posts/{id}.html",
-  "tags": ["{tag1}", "{tag2}", ...]
+  "src": "/abs/path/to/file.md",   # 원본 절대경로
+  "engine": "md" | "html",          # 처리 엔진
+  "slug": "kebab-case-id",
+  "title": "추출된 제목",
+  "category": "<인자 또는 추론>",
+  "tags": [...],
+  "summary": "..."
 }
 ```
 
-### 6️⃣ HTML 변환 & 저장
+### 모드별 처리
 
-마크다운을 HTML로 변환하여 `posts/{id}.html` 저장.
+- **`{file.md}`** → 1 job (engine=md)
+- **`{file.html}`** → 1 job (engine=html)
+- **`{dir/}`** → 디렉토리 안 모든 `.md` + `.html` (재귀 X). 비-ASCII 파일명 처리(아래) 거쳐 N jobs.
+- **`"{glob}"`** → glob 매칭한 파일들
 
-변환 규칙:
+### 비-ASCII (한글) 파일명 처리
 
-| Markdown           | HTML                                           |
-| ------------------ | ---------------------------------------------- |
-| `# 제목`           | `<h1 class="post-title">제목</h1>` (header 내) |
-| `## 섹션`          | `<h2>섹션</h2>`                                |
-| `### 소제목`       | `<h3>소제목</h3>`                              |
-| `**굵게**`         | `<strong>굵게</strong>`                        |
-| `_기울임_`         | `<em>기울임</em>`                              |
-| `` `인라인코드` `` | `<code>인라인코드</code>`                      |
-| ` ```코드블록``` ` | `<pre><code>...</code></pre>`                  |
-| `- 항목`           | `<ul><li>항목</li></ul>`                       |
-| `1. 항목`          | `<ol><li>항목</li></ol>`                       |
-| `> 인용`           | `<blockquote>인용</blockquote>`                |
-| `\|표\|`           | `<table><thead><tbody>...`                     |
-| `[링크](url)`      | `<a href="url">링크</a>`                       |
+Windows + Python 조합에서 한글 파일명이 `os.listdir()` 으로 보이지 않는 케이스가 있다. PowerShell 로 우회:
 
-**HTML 전체 구조:**
-
-```html
-<article>
-  <header class="post-header">
-    <h1 class="post-title">제목</h1>
-    <div class="post-meta">
-      <time>2026-04-11</time>
-      <span class="category-tag">Category</span>
-    </div>
-  </header>
-
-  <div class="post-content">
-    <!-- 변환된 본문 -->
-    <h2>섹션 1</h2>
-    <p>내용...</p>
-  </div>
-</article>
+```powershell
+Get-ChildItem -LiteralPath $src -Filter *.html | ForEach-Object {
+  # ASCII slug 로 임시 디렉토리에 복사
+  $slug = ...  # title/길이/순번 기반
+  Copy-Item -LiteralPath $_.FullName -Destination "$tmp/$slug.html" -Force
+}
 ```
 
-### 7️⃣ Commit & Push
+이후 Python 빌더는 ASCII 임시 디렉토리에서 파일을 읽는다.
+
+### 메타데이터 추출
+
+- **MD**: frontmatter(`---` 사이) 우선, 없으면 첫 H1 → title, 첫 문단 → summary, 헤딩들 → tags
+- **HTML**: `<title>` 태그 → title, `<meta name="description">` → summary, 첫 H1 → fallback title, body 안 헤딩들 → tags
+- **slug**: 파일명 → kebab-case (한글은 PowerShell 단계에서 ASCII slug 로 변환됨)
+- **category**: CLI 인자 우선, 없으면 AskUserQuestion 으로 사용자에게 묻기 (기존 카테고리 + 신규)
+
+---
+
+## 2️⃣ 레포 준비 + 워크트리 생성
 
 ```bash
+# Clone (없으면) 또는 pull (있으면)
+if [ ! -d "$LOCAL_DIR" ]; then
+  git clone "$REPO_URL" "$LOCAL_DIR"
+fi
+cd "$LOCAL_DIR"
+BASE_BRANCH=$(git remote show origin | grep 'HEAD branch' | sed 's/.*: //')
+# 빈 레포면 BASE_BRANCH는 main 으로 가정
+[ -z "$BASE_BRANCH" ] && BASE_BRANCH=main
+git fetch origin || true
+git checkout "$BASE_BRANCH" 2>/dev/null || git symbolic-ref HEAD refs/heads/$BASE_BRANCH
+git pull origin "$BASE_BRANCH" 2>/dev/null || true
+
+# 워크트리 (배포 단위)
+TS=$(date +%Y%m%d-%H%M%S)
+BR="post-preview-${TS}"
+git worktree add -b "$BR" "$WORKTREE_DIR"
+cd "$WORKTREE_DIR"
+```
+
+---
+
+## 3️⃣ 첫 배포면 템플릿 복사
+
+워크트리에 `index.html` 이 없거나 `.diary-meta.json` 의 template 이 다르면:
+
+```bash
+TEMPLATE_DIR="${PLUGIN_ROOT}/skills/diary/templates/${TEMPLATE}"
+cp -R "$TEMPLATE_DIR"/* .
+# {{BLOG_TITLE}}, {{BLOG_TAGLINE}}, {{BLOG_HERO_TITLE}}, {{BLOG_ABOUT}}, {{BLOG_YEAR}} 치환
+sed -i "s/{{BLOG_TITLE}}/${BLOG_TITLE}/g" index.html
+# ... (모든 템플릿 변수 치환)
+echo "{\"template\":\"${TEMPLATE}\"}" > .diary-meta.json
+touch .nojekyll  # GitHub Pages 가 _underscore 폴더를 무시하지 않도록
+```
+
+`{{BLOG_TITLE}}`, `{{BLOG_TAGLINE}}`, `{{BLOG_HERO_TITLE}}`, `{{BLOG_ABOUT}}`, `{{BLOG_YEAR}}` 가 비어있으면 AskUserQuestion 으로 사용자에게 입력받음.
+
+---
+
+## 4️⃣ posts.json 갱신 (메모리상)
+
+```bash
+# 기존 posts.json 로드 (없으면 빈 구조)
+[ -f posts.json ] && cat posts.json || echo '{"categories":[],"posts":[]}'
+```
+
+각 job 에 대해:
+
+1. `posts[].id == job.slug` 인 항목 검색
+2. 있고 `--overwrite` 미설정: `[skip] {filename} → already exists as id=${slug}` 출력, 이 job 제외
+3. 있고 `--overwrite` 설정: 기존 항목 제거 후 새로 삽입
+4. 없음: 신규 삽입
+
+스키마 (기존 호환 + 신규 필드):
+```json
+{
+  "id": "kebab-slug",
+  "title": "...",
+  "date": "YYYY-MM-DD",
+  "category": "...",
+  "summary": "...",
+  "filename": "posts/{slug}.html",
+  "tags": ["..."],
+  "engine": "md" | "html",
+  "themeInjected": true | false
+}
+```
+
+`category` 가 `categories[]` 에 없으면 추가.
+
+---
+
+## 5️⃣ 포스트 HTML 생성 (워크트리에 기록)
+
+### MD 엔진
+
+```bash
+# 마크다운 → HTML 변환 (기존 변환 규칙 그대로, 인라인 Python markdown 또는 정규식)
+# 변환된 HTML 을 _post-frame.html 의 {{POST_HTML}} 자리에 치환
+sed -e "s|{{POST_TITLE}}|${TITLE}|g" \
+    -e "s|{{POST_CATEGORY}}|${CAT}|g" \
+    -e "s|{{POST_DATE}}|${DATE}|g" \
+    -e "s|{{POST_HTML}}|${BODY_HTML}|g" \
+    -e "s|{{BLOG_TITLE}}|${BLOG_TITLE}|g" \
+    _post-frame.html > posts/${slug}.html
+```
+
+(실제로는 sed 보다 Python 한 줄로 read+replace+write 하는 게 안전함, 본문에 특수문자 있을 수 있어서)
+
+### HTML 엔진
+
+```bash
+# inject_html_adapter.py 호출
+python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
+  --src "${SRC}" --dst "posts/${slug}.html" --title "${TITLE}" \
+  ${NO_THEME:+--no-theme}
+```
+
+배치 모드는 `--map` JSON 으로 한 번에 호출 가능.
+
+---
+
+## 6️⃣ 미리보기 서버 + 브라우저 오픈
+
+```bash
+PORT=${PREVIEW_PORT:-8765}
+cd "$WORKTREE_DIR"
+python3 -m http.server $PORT >/tmp/diary-preview.log 2>&1 &
+SERVER_PID=$!
+sleep 1
+
+# 브라우저 자동 오픈
+URL="http://localhost:${PORT}/"
+case "$(uname -s)" in
+  MINGW*|CYGWIN*|MSYS*) start "$URL" ;;
+  Darwin) open "$URL" ;;
+  Linux) xdg-open "$URL" >/dev/null 2>&1 || true ;;
+esac
+```
+
+> Windows Git Bash 에서 `start` 가 안 되면 `cmd //c start "" "$URL"` 또는 PowerShell `Start-Process "$URL"` 로 폴백.
+
+---
+
+## 7️⃣ 승인 게이트
+
+AskUserQuestion 호출:
+
+```
+질문: "이 모습으로 게시할까요?"
+   ✅ 게시 (Recommended) — push + PR + merge
+   ✏️ 수정     — 사용자 피드백 받아 4~5단계 재실행 (또는 워크트리 그대로 두고 사용자가 직접 편집)
+   ❌ 취소     — 워크트리 삭제, 0회 push
+```
+
+선택 후 처리:
+
+- **✅ 게시** → 9단계로 진행
+- **✏️ 수정** → 사용자에게 어떤 부분이 문제인지 묻고, 가능하면 자동으로 수정 후 4~5단계 재실행. 수정 불가능한 경우 워크트리를 그대로 두고 "워크트리 위치: ${WORKTREE_DIR}. 직접 수정 후 다시 실행해 주세요" 안내. 서버는 종료.
+- **❌ 취소** → `kill $SERVER_PID; git worktree remove --force "$WORKTREE_DIR"; git branch -D $BR` 후 종료.
+
+---
+
+## 8️⃣ (스킵)
+
+## 9️⃣ Commit + Push + PR + Merge
+
+```bash
+cd "$WORKTREE_DIR"
 git add -A
-git commit -m "feat: {제목} 포스트 추가
+git commit -m "feat: ${TITLES_SUMMARY}
 
-- 카테고리: {카테고리}
-- 태그: {tag1}, {tag2}, ...
-- 요약: {요약 첫 문장}"
+- 카테고리: ${CATEGORIES}
+- 템플릿: ${TEMPLATE}
+- 처리 파일 수: ${OK_COUNT}"
 
-git push -u origin post-{id}
+git push -u origin "$BR"
+
+# 빈 레포면 PR 안 됨 → 직접 base에 push
+if ! git ls-remote --heads origin "$BASE_BRANCH" | grep -q "$BASE_BRANCH"; then
+  git push origin "${BR}:${BASE_BRANCH}"
+else
+  gh pr create --head "$BR" --base "$BASE_BRANCH" \
+    --title "feat: ${TITLES_SUMMARY}" \
+    --body "${PR_BODY}"
+  gh pr merge --squash --delete-branch
+fi
+
+git checkout "$BASE_BRANCH"
+git pull origin "$BASE_BRANCH"
 ```
 
-### 8️⃣ PR 생성 & 자동 merge
+`gh` CLI 가 없으면 `git push origin "${BR}:${BASE_BRANCH}"` 로 직접 푸시 + 사용자에게 GitHub Pages 활성화 가이드 출력.
 
-**자동 PR 생성:**
+## 🔟 정리 + 결과 출력
 
 ```bash
-gh pr create \
-  --head post-{id} \
-  --base {BASE_BRANCH} \
-  --title "feat: {제목} 포스트 추가" \
-  --body "카테고리: {카테고리}
-태그: {tag1}, {tag2}, ...
-요약: {요약}"
+kill $SERVER_PID 2>/dev/null
+git worktree remove --force "$WORKTREE_DIR"
 ```
-
-**자동 merge & 브랜치 삭제:**
-
-```bash
-gh pr merge --squash --delete-branch
-```
-
-**로컬 main 동기화:**
-
-```bash
-git checkout {BASE_BRANCH}
-git pull origin {BASE_BRANCH}
-```
-
-### 9️⃣ Worktree 정리
-
-```bash
-git worktree remove {WORKTREE_DIR}
-```
-
-### 🔟 결과 출력
 
 ```
 ✅ 게시 완료!
 
-📄 포스트: {제목}
-🏷️  카테고리: {카테고리}
-🔗 파일: posts/{id}.html
-📅 작성일: 2026-04-11
+📦 처리한 포스트 (N개):
+   · {slug1} — {title1}
+   · {slug2} — {title2}
+   · [skip] {slug3} — already existed (use --overwrite to replace)
 
+🏷️  카테고리: {cat}
+🎨 템플릿: {template}
 🌐 블로그: {PAGES_URL}
-⏱️  예상 반영 시간: 1분 내 (GitHub Actions 자동 배포)
+⏱️  반영: 1~2분 후 (GitHub Actions 자동 배포)
 ```
 
 ---
 
-## 실행 시 질문 (필요한 경우)
+## 5가지 템플릿 한눈에
 
-### 카테고리 확인
+| name | 톤 | 적합한 콘텐츠 |
+|------|-----|------|
+| `minimal` | 흰 배경 · 세리프 본문 · 단일 컬럼 | 텍스트 중심 노트, 에세이 |
+| `tech` (default) | 다크 히어로 · 그라데이션 카드 · 카테고리 필터 | 시뮬레이터 · 도식 · 도구 |
+| `lecture` | 주차/회차 번호 · 사이드 목차 | 정규 강의 시리즈 |
+| `notebook` | Jupyter풍 좌측 TOC · monospace 헤딩 | 튜토리얼 · 실습 |
+| `magazine` | 큰 히어로 · 에디토리얼 그리드 · 세리프 | 포트폴리오 · 쇼케이스 |
 
-파일 내용으로 자동 추론하되, 기존 카테고리와 맞지 않으면:
-
-```
-📌 현재 카테고리: "Kubernetes"
-   기존 카테고리: ["Kubernetes", "Docker", "Linux", "Git", "Marketing"]
-
-이 포스트의 카테고리는?
-1. 기존 카테고리 선택
-2. 신규 생성: {입력값}
-```
-
-### 요약 확인
-
-자동 추출한 요약이 부족하면:
-
-```
-📝 현재 요약: "..."
-요약을 수정하거나 그대로 진행할까요?
-```
+각 템플릿은 `templates/{name}/` 안 4개 파일:
+- `index.html` — 홈
+- `assets/style.css`
+- `assets/script.js`
+- `_post-frame.html` — 마크다운 포스트 셸 (HTML 시뮬레이터는 이 셸을 사용하지 않고 어댑터만 주입)
 
 ---
 
-## 팁
+## 강의자료 특화 향후 확장 (미구현)
 
-### 마크다운 작성 시
+다음은 본 스킬에는 포함되어 있지 않지만 강의자료 운영에 유용한 기능들. 백로그.
 
-- **첫 번째 `# 제목`** 이 포스트 제목이 됨 (필수)
-- **frontmatter** (선택):
-  ```yaml
-  ---
-  summary: "요약을 여기 써도 자동 인식됩니다"
-  tags: ["tag1", "tag2"]
-  ---
-  ```
+1. **시리즈 그룹핑** — `series` 필드로 "MSA 강의 1주차" 같은 묶음 자동 생성
+2. **공개 토글** — `published: false` 로 게시는 했지만 목록에서 숨김
+3. **선수 학습 링크** — `prereq: ["msa-k8s-websocket"]`
+4. **slide 모드** — `?mode=slide` 로 발표용 풀스크린 변환
+5. **자동 ToC** — H2/H3 구조에서 우측 sticky ToC
+6. **댓글/Q&A** — utterances·giscus 임베드
 
-### 이미 존재하는 ID
-
-같은 ID로 다시 실행하면:
-
-- posts.json 기존 항목 제거
-- HTML 파일 덮어씀
-- 새 브랜치로 푸시
-
-### Git 충돌
-
-워크트리 작업 중 main 브랜치가 변경되면:
-
-- 워크트리 안에서 `git pull origin {BASE_BRANCH}` 실행
-- 충돌 해결 후 다시 진행
+필요해지면 별도 phase 로 추가.
 
 ---
 
 ## 에러 처리
 
-### 설정 파일 오류
-
-```
-❌ 설정 파일 없음
-  ~/.claude/hams-diary.json 이 존재하지 않습니다.
-  /hams-diary --set-repo {URL} 로 먼저 설정하세요.
-
-❌ 레포 URL 파싱 실패
-  올바른 GitHub URL 형식인지 확인하세요.
-  지원: https://github.com/owner/repo.git
-        git@github.com:owner/repo.git
-```
-
-### 레포 Clone 실패
-
-```
-❌ Clone 실패: GitHub 인증 확인
-  git config user.name / user.email 설정 확인
-  SSH 키 또는 Personal Access Token 설정 필요
-```
-
-### MD 파일 포맷 오류
-
-```
-❌ 포맷 오류: h1 헤딩을 찾을 수 없음
-  첫 줄에 # 제목 형식으로 작성하세요
-```
-
-### 카테고리 미결정
-
-```
-❌ 카테고리 미결정
-  /hams-diary {파일} 카테고리명 으로 명시하세요
-```
+| 케이스 | 처리 |
+|------|-----|
+| 설정 파일 없음 | AskUserQuestion 으로 URL 받기 → 저장 후 계속 |
+| Clone 실패 | git config user.name/email · PAT/SSH 안내 |
+| 한글 파일명 안 보임 | PowerShell `Get-ChildItem -LiteralPath` 폴백 |
+| 빈 레포 | 첫 배포는 BR 을 직접 BASE_BRANCH 로 push |
+| 미리보기 서버 포트 점유 | `--preview-port` 로 변경 또는 자동 incrementー 8765→8766→… |
+| 브라우저 자동 오픈 실패 | URL 출력 후 사용자에게 직접 열도록 안내 |
+| 사용자 ❌ 선택 | 워크트리/브랜치 삭제, push 0회, 깨끗하게 종료 |
 
 ---
 
-## 내부 구현 (Claude가 따를 체크리스트)
+## 내부 구현 체크리스트 (Claude 가 따를 순서)
 
-- [ ] `--set-repo` 플래그 확인: 있으면 설정 파일 저장 후 종료
-- [ ] `~/.claude/hams-diary.json` Read: repo, pagesUrl 추출
-- [ ] 설정 파일 없으면 AskUserQuestion → 저장 후 계속
-- [ ] REPO_URL, REPO_NAME, REPO_OWNER, PAGES_URL, LOCAL_DIR, WORKTREE_DIR 변수 결정
-- [ ] 인자 파싱: 파일경로, 카테고리(옵션)
-- [ ] MD 파일 Read
-- [ ] 제목 추출: `# .*` 정규식으로 첫 h1 찾기
-- [ ] 요약 추출: frontmatter → 첫 단락 순서
-- [ ] 태그 추출: `##`, `###` 헤딩, 코드 블록 키워드
-- [ ] 카테고리 결정: 인자 또는 내용 분석 → 기존/신규
-- [ ] {LOCAL_DIR} 확인: clone/pull
-- [ ] ID 생성: 파일명 → kebab-case
-- [ ] Worktree 생성: `git worktree add -b post-{id} ...`
-- [ ] BASE_BRANCH 자동 감지: `git remote show origin | grep 'HEAD branch'`
-- [ ] posts.json Read
-- [ ] posts.json 수정: categories 추가(신규시), posts 앞에 항목 삽입
-- [ ] posts.json Write
-- [ ] MD → HTML 변환: 마크다운 파싱 → HTML 생성
-- [ ] HTML 파일 Write: `posts/{id}.html`
-- [ ] Git commit: `git add -A && git commit -m ...`
-- [ ] Git push: `git push -u origin post-{id}`
-- [ ] **✨ gh pr create**: 자동 PR 생성 (제목, 본문 포함)
-- [ ] **✨ gh pr merge --squash --delete-branch**: 자동 merge + 브랜치 삭제
-- [ ] **✨ git checkout {BASE_BRANCH} && git pull origin {BASE_BRANCH}**: 로컬 베이스 브랜치 동기화
-- [ ] Worktree 삭제: `git worktree remove {WORKTREE_DIR}`
-- [ ] 결과 출력: {PAGES_URL} + 배포 예상 시간
+- [ ] **인자 파싱** — `--set-repo`, `--set-template`, `--no-theme`, `--overwrite`, `--draft`, `--preview-port`, 위치 인자(파일/디렉토리/글롭, 카테고리)
+- [ ] `--set-repo` 분기 — JSON 저장 후 종료
+- [ ] `--set-template` 분기 — JSON 갱신 후 종료
+- [ ] `~/.claude/hams-diary.json` Read (없으면 AskUserQuestion)
+- [ ] REPO_URL, OWNER, NAME, PAGES_URL, TEMPLATE, LOCAL_DIR, WORKTREE_DIR, BASE_BRANCH 결정
+- [ ] **JOBS 배열 구성** — 단일/디렉토리/글롭 분기, 한글 파일명 PowerShell 폴백
+- [ ] 각 job 메타 추출 (title/summary/tags/slug/category)
+- [ ] category 미결정시 AskUserQuestion
+- [ ] LOCAL_DIR clone/pull
+- [ ] WORKTREE_DIR worktree add
+- [ ] 첫 배포 판단 (index.html 부재 또는 .diary-meta.json template 다름) → 템플릿 복사 + {{BLOG_*}} 치환 + .nojekyll
+- [ ] BLOG_TITLE 등 미설정시 AskUserQuestion
+- [ ] posts.json 로드 (없으면 빈 구조)
+- [ ] 각 job: 중복 검사 → skip 또는 신규 삽입 (`--overwrite` 면 교체)
+- [ ] posts.json 워크트리에 Write
+- [ ] **각 job 실행**:
+  - md → 인라인 변환 또는 markdown 라이브러리 → `_post-frame.html` 치환 → `posts/{slug}.html` 기록
+  - html → `inject_html_adapter.py --src --dst --title [--no-theme]` 호출
+- [ ] **미리보기 서버 시작** — `python3 -m http.server $PORT &` (PID 저장)
+- [ ] **브라우저 자동 오픈** — OS별 분기 (start/open/xdg-open)
+- [ ] **AskUserQuestion 승인 게이트** — ✅게시 / ✏️수정 / ❌취소
+- [ ] 사용자 응답 처리:
+  - ✅: 9단계 (commit/push/PR/merge)
+  - ✏️: 사용자 피드백 받아 재빌드 또는 워크트리 그대로 두고 안내 후 종료
+  - ❌: kill server, worktree remove, branch delete, 종료
+- [ ] (✅ 케이스) commit + push + PR (gh 없으면 직접 push) + merge
+- [ ] (✅ 케이스) 워크트리/브랜치 정리
+- [ ] **결과 출력** — 성공한 포스트 목록, skip된 항목, 블로그 URL, 반영 예상 시간
+- [ ] (--draft 케이스) push 건너뛰고 워크트리 보존, 위치 안내
 
 ---
 
 ## 참고
 
-- **설정 파일**: `~/.claude/hams-diary.json`
-- **타겟 레포**: `{REPO_URL}` (설정 파일에서 읽음)
-- **블로그 사이트**: `{PAGES_URL}` (자동 추론 또는 설정 파일의 `pagesUrl`)
-- **로컬 작업 경로**: `{LOCAL_DIR}` (clone), `{WORKTREE_DIR}` (worktree)
-- **레포 변경**: `/hams-diary --set-repo {새URL}`
+- 설정: `~/.claude/hams-diary.json` (`{repo, template, pagesUrl?}`)
+- 템플릿: `${PLUGIN_ROOT}/skills/diary/templates/{minimal|tech|lecture|notebook|magazine}/`
+- HTML 어댑터 빌더: `${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py`
+- 레포 메타: `{REPO}/.diary-meta.json` (현재 적용된 템플릿 기록)

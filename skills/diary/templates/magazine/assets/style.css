@@ -1,0 +1,51 @@
+/* Magazine — editorial grid with large hero */
+:root {
+  --bg: #fdfbf7; --bg-card: #fff; --text: #161616; --muted: #5a5a5a;
+  --border: #e5e2da; --accent: #b91c1c;
+  --serif: "Playfair Display", "Iowan Old Style", "Noto Serif KR", Georgia, serif;
+  --sans: -apple-system, "Inter", "Pretendard", sans-serif;
+}
+:root[data-theme="dark"] {
+  --bg: #131110; --bg-card: #1c1a18; --text: #f0ece5; --muted: #aaa;
+  --border: #2a2724; --accent: #fb7185;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); }
+.mag-top { padding: 32px 48px 16px; border-bottom: 2px solid var(--text); }
+.mag-top__inner { display: flex; justify-content: space-between; align-items: center; max-width: 1280px; margin: 0 auto; }
+.mag-brand { font-family: var(--serif); font-size: 32px; font-weight: 700; letter-spacing: -1px; color: inherit; text-decoration: none; }
+.mag-date { max-width: 1280px; margin: 0 auto; padding-top: 12px; font-size: 11px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+.theme-toggle { background: none; border: 1px solid var(--text); color: inherit; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; }
+
+.mag-feature { max-width: 1280px; margin: 0 auto; padding: 48px 48px 24px; display: grid; grid-template-columns: 1.4fr 1fr; gap: 56px; }
+.mag-feature__main { }
+.mag-feature__hero { display: flex; align-items: center; justify-content: center; aspect-ratio: 16/10;
+  background: linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, #6366f1) 100%);
+  border-radius: 0; font-family: var(--serif); color: #fff; font-size: 92px; font-weight: 700; letter-spacing: -3px; }
+.mag-feature__cat { font-size: 11px; letter-spacing: 2.5px; color: var(--accent); text-transform: uppercase; font-weight: 700; margin: 16px 0 10px; }
+.mag-feature__title { font-family: var(--serif); font-size: clamp(32px, 5vw, 56px); line-height: 1.1; letter-spacing: -1.5px; margin-bottom: 16px; }
+.mag-feature__title a { color: inherit; text-decoration: none; }
+.mag-feature__title a:hover { color: var(--accent); }
+.mag-feature__summary { font-size: 17px; color: var(--muted); line-height: 1.6; max-width: 540px; }
+.mag-feature__sidebar { border-left: 1px solid var(--border); padding-left: 32px; }
+.mag-feature__sidebar h3 { font-size: 11px; letter-spacing: 2px; color: var(--muted); margin-bottom: 16px; text-transform: uppercase; }
+.mag-feature__sidebar ul { list-style: none; }
+.mag-feature__sidebar li { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.mag-feature__sidebar li:last-child { border-bottom: 0; }
+.mag-feature__sidebar a { color: inherit; text-decoration: none; }
+.mag-feature__sidebar a:hover { color: var(--accent); }
+.mag-feature__sidebar .num { font-family: var(--serif); font-size: 28px; color: var(--accent); margin-right: 12px; vertical-align: middle; }
+.mag-feature__sidebar .ttl { font-family: var(--serif); font-size: 17px; line-height: 1.3; vertical-align: middle; }
+
+.mag-grid { max-width: 1280px; margin: 0 auto; padding: 32px 48px 96px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px 32px; border-top: 1px solid var(--border); padding-top: 48px; }
+.mag-card a { color: inherit; text-decoration: none; }
+.mag-card__hero { aspect-ratio: 4/3; background: var(--bg-card); border-radius: 0; display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-size: 56px; font-weight: 700; color: var(--accent); }
+.mag-card__cat { font-size: 11px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; font-weight: 700; margin: 16px 0 8px; }
+.mag-card__title { font-family: var(--serif); font-size: 22px; line-height: 1.25; letter-spacing: -0.4px; margin-bottom: 8px; }
+.mag-card__summary { color: var(--muted); font-size: 14px; line-height: 1.6; }
+.mag-foot { padding: 32px; text-align: center; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); letter-spacing: 1px; }
+@media (max-width: 880px) {
+  .mag-feature { grid-template-columns: 1fr; padding: 32px 24px; gap: 32px; }
+  .mag-feature__sidebar { border-left: 0; padding-left: 0; border-top: 1px solid var(--border); padding-top: 24px; }
+  .mag-grid { grid-template-columns: 1fr; padding: 24px; }
+}
