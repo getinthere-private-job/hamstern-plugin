@@ -21,7 +21,8 @@
         "./skills/why",
         "./skills/diary",
         "./skills/start",
-        "./skills/stop"
+        "./skills/stop",
+        "./skills/deeptalk"
       ]
     }
   ]

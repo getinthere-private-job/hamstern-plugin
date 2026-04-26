@@ -17,8 +17,19 @@ def is_app_running(cwd: str) -> bool:
         return False
     return True
 
+def is_deeptalk_running(cwd: str) -> bool:
+    import time
+    flag = Path(cwd) / ".hamstern" / ".deeptalk-running"
+    if not flag.exists():
+        return False
+    age = time.time() - flag.stat().st_mtime
+    if age > 86400:
+        flag.unlink(missing_ok=True)
+        return False
+    return True
+
 def record_prompt(session_id: str, cwd: str, prompt: str) -> None:
-    if is_app_running(cwd):
+    if is_app_running(cwd) or is_deeptalk_running(cwd):
         return
     baby_dir = Path(cwd) / ".hamstern" / "baby-hamster"
     baby_dir.mkdir(parents=True, exist_ok=True)

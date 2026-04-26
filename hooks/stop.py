@@ -12,8 +12,19 @@ def is_app_running(cwd: str) -> bool:
         return False
     return time.time() - flag.stat().st_mtime <= 86400
 
+def is_deeptalk_running(cwd: str) -> bool:
+    import time
+    flag = Path(cwd) / ".hamstern" / ".deeptalk-running"
+    if not flag.exists():
+        return False
+    age = time.time() - flag.stat().st_mtime
+    if age > 86400:
+        flag.unlink(missing_ok=True)
+        return False
+    return True
+
 def record_stop(session_id: str, cwd: str, transcript_path: str) -> None:
-    if is_app_running(cwd):
+    if is_app_running(cwd) or is_deeptalk_running(cwd):
         return
     baby = Path(cwd) / ".hamstern" / "baby-hamster" / f"session_{session_id}.md"
     if not baby.exists():
