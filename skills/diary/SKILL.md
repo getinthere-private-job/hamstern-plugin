@@ -7,6 +7,7 @@ description: |
   강의자료 일괄 배포에 최적화되어 있다.
   사용법:
     /hams-diary {file.md|file.html|dir/|glob} [category]
+    /hams-diary --edit {slug}
     /hams-diary --set-repo {github-url}
     /hams-diary --set-template {1-5|name}
 allowed-tools:
@@ -27,6 +28,7 @@ allowed-tools:
 2. **목업 → 승인 게이트** — 로컬에서 빌드 후 `python -m http.server` 로 브라우저 미리보기, 사용자 승인 후에만 commit/push/merge
 3. **5가지 디자인 템플릿** — `minimal`, `tech`, `lecture`, `notebook`, `magazine` 중 선택
 4. **중복 자동 제외** — 배치 모드에서 같은 slug 의 포스트는 skip (--overwrite 로 강제)
+5. **편집 모드** — `--edit {slug}` 로 기존 포스트를 에디터에 열고 저장 시 자동 재빌드, 미리보기 새로고침
 
 ---
 
@@ -39,6 +41,7 @@ allowed-tools:
 /hams-diary {file.html} [category]              # 4. HTML 시뮬레이터 1개 배포
 /hams-diary {dir/} [category]                   # 5. 폴더 일괄 배포
 /hams-diary "{glob}" [category]                 # 6. 글롭 일괄 배포 (예: "*.html")
+/hams-diary --edit {slug}                       # 7. 기존 포스트 편집 (자동 재빌드)
 
 # 플래그
 /hams-diary {input} --no-theme                  # HTML 어댑터 주입 끄기
@@ -240,6 +243,19 @@ python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
 
 배치 모드는 `--map` JSON 으로 한 번에 호출 가능.
 
+### 원본 소스 보존 (`_src/`)
+
+배포 시 원본 파일을 워크트리의 `_src/{slug}.{ext}` 로도 복사한다. 나중에 `--edit {slug}` 로 편집할 때 이 원본을 에디터에 열어준다.
+
+```bash
+mkdir -p _src
+cp "${SRC}" "_src/${slug}.${EXT}"   # ext = md or html (변환 전 파일)
+```
+
+posts.json 의 `sourcePath` 필드에도 경로를 기록 (`"sourcePath": "_src/{slug}.{ext}"`).
+
+`_src/` 는 GitHub Pages 가 무시하지 않도록 `.nojekyll` 만 있으면 그대로 서빙되지만, 보통 사이트에는 노출되지 않게 `index.html` 의 라우팅 대상 외다 — 그냥 레포에만 보관되는 원본 백업이다.
+
 ---
 
 ## 6️⃣ 미리보기 서버 + 브라우저 오픈
@@ -355,6 +371,68 @@ git worktree remove --force "$WORKTREE_DIR"
 
 ---
 
+## ✏️ 편집 모드 (`--edit {slug}`)
+
+기존 게시글의 내용·제목·태그를 고치는 가장 빠른 방법. 워크트리·미리보기·자동 재빌드·승인 게이트가 한 번에 묶여 있어 "오타 1개 고치고 게시" 가 30초 안에 끝난다.
+
+### 흐름
+
+```
+[1] /hams-diary --edit msa-k8s-websocket
+[2] 레포 clone/pull → 워크트리 생성
+[3] posts.json 에서 slug 검색 → sourcePath 확인
+    sourcePath 없음 → "이 포스트는 _src/ 백업이 없습니다.
+                       원본 파일을 다시 /hams-diary {file} --overwrite 로
+                       배포해 주세요." 안내 후 종료
+[4] 기본 에디터로 _src/{slug}.{ext} 열기
+[5] python -m http.server $PORT 백그라운드 실행
+[6] 브라우저 자동 오픈 → http://localhost:8765/posts/{slug}.html
+[7] watch_and_rebuild.py 백그라운드 실행
+    → _src/{slug}.{ext} mtime 변경 감지 시
+    → 적절한 빌더 호출 (md → 변환, html → inject_html_adapter)
+    → posts/{slug}.html 갱신 + 콘솔에 [HH:MM:SS] rebuilt 출력
+[8] 사용자가 에디터에서 저장할 때마다 (5)~(7)의 자동 빌드 발생
+    브라우저에서 F5 로 변경 확인
+[9] 편집 완료 후 AskUserQuestion: "이 변경을 게시할까요?"
+       ✅ 게시 → commit + push + PR + merge (커밋 메시지: "edit: {title}")
+       ❌ 취소 → 워크트리/브랜치 삭제, push 0회
+[10] watcher 종료 + 서버 종료 + 워크트리 정리
+```
+
+### `_src/` 가 없는 기존 포스트
+
+`/hams-diary` v1 시절(즉, `_src/` 백업 도입 이전)에 게시된 포스트는 `posts/{slug}.html` 의 빌드 결과만 레포에 있다. 이런 포스트를 편집하려면:
+
+- **MD 였던 포스트**: 원본 `.md` 가 손에 있다면 `--overwrite` 로 재배포해 자동으로 `_src/` 백업 생성
+- **HTML 시뮬레이터**: 원본 손에 없으면 `posts/{slug}.html` 에서 어댑터 블록(주석 마커로 식별 가능)을 제거해 원본을 추출하는 fallback 가능 (별도 도구 필요, 현재 미제공)
+
+가장 안전한 길: 첫 게시 후엔 원본을 로컬에서 보관하지 말고, 항상 `_src/` 를 진실의 원본으로 사용한다.
+
+### 명령어 호출 예
+
+```bash
+# Python watcher 호출 형태 (md)
+python3 "${PLUGIN_ROOT}/skills/diary/watch_and_rebuild.py" \
+  --src "_src/${slug}.md" --dst "posts/${slug}.html" \
+  --engine md --frame "_post-frame.html" \
+  --title "${TITLE}" --category "${CAT}" \
+  --date "${DATE}" --blog-title "${BLOG_TITLE}" &
+WATCHER_PID=$!
+
+# Python watcher 호출 형태 (html)
+python3 "${PLUGIN_ROOT}/skills/diary/watch_and_rebuild.py" \
+  --src "_src/${slug}.html" --dst "posts/${slug}.html" \
+  --engine html --title "${TITLE}" \
+  ${NO_THEME:+--no-theme} &
+WATCHER_PID=$!
+```
+
+### 메타데이터(제목·요약·카테고리·태그) 편집
+
+본문이 아닌 메타만 바꾸고 싶으면 `_src/` 의 frontmatter(MD) 또는 `<title>`/`<meta>` 태그(HTML)를 수정하면 watcher 가 추출해 posts.json 도 갱신한다 (재빌드 시 메타 추출 로직이 동일하게 돌기 때문).
+
+---
+
 ## 강의자료 특화 향후 확장 (미구현)
 
 다음은 본 스킬에는 포함되어 있지 않지만 강의자료 운영에 유용한 기능들. 백로그.
@@ -386,9 +464,10 @@ git worktree remove --force "$WORKTREE_DIR"
 
 ## 내부 구현 체크리스트 (Claude 가 따를 순서)
 
-- [ ] **인자 파싱** — `--set-repo`, `--set-template`, `--no-theme`, `--overwrite`, `--draft`, `--preview-port`, 위치 인자(파일/디렉토리/글롭, 카테고리)
+- [ ] **인자 파싱** — `--set-repo`, `--set-template`, `--edit`, `--no-theme`, `--overwrite`, `--draft`, `--preview-port`, 위치 인자(파일/디렉토리/글롭, 카테고리)
 - [ ] `--set-repo` 분기 — JSON 저장 후 종료
 - [ ] `--set-template` 분기 — JSON 갱신 후 종료
+- [ ] `--edit {slug}` 분기 — 편집 모드 흐름(아래 별도 섹션)으로 진입
 - [ ] `~/.claude/hams-diary.json` Read (없으면 AskUserQuestion)
 - [ ] REPO_URL, OWNER, NAME, PAGES_URL, TEMPLATE, LOCAL_DIR, WORKTREE_DIR, BASE_BRANCH 결정
 - [ ] **JOBS 배열 구성** — 단일/디렉토리/글롭 분기, 한글 파일명 PowerShell 폴백
@@ -404,6 +483,7 @@ git worktree remove --force "$WORKTREE_DIR"
 - [ ] **각 job 실행**:
   - md → 인라인 변환 또는 markdown 라이브러리 → `_post-frame.html` 치환 → `posts/{slug}.html` 기록
   - html → `inject_html_adapter.py --src --dst --title [--no-theme]` 호출
+  - **원본 백업**: `cp ${SRC} _src/${slug}.${EXT}` 후 posts.json 의 `sourcePath` 필드에 경로 기록
 - [ ] **미리보기 서버 시작** — `python3 -m http.server $PORT &` (PID 저장)
 - [ ] **브라우저 자동 오픈** — OS별 분기 (start/open/xdg-open)
 - [ ] **AskUserQuestion 승인 게이트** — ✅게시 / ✏️수정 / ❌취소
@@ -416,6 +496,22 @@ git worktree remove --force "$WORKTREE_DIR"
 - [ ] **결과 출력** — 성공한 포스트 목록, skip된 항목, 블로그 URL, 반영 예상 시간
 - [ ] (--draft 케이스) push 건너뛰고 워크트리 보존, 위치 안내
 
+### `--edit {slug}` 모드 체크리스트
+
+- [ ] 설정 Read + REPO clone/pull (위와 동일)
+- [ ] 워크트리 생성 (`BR=edit-${slug}-${TS}`)
+- [ ] posts.json 에서 `id == slug` 검색 → entry 추출
+  - 없음 → "slug 일치 없음" 안내 후 종료
+  - 있음 + sourcePath 없음 → "원본 백업 부재" 안내 후 종료
+- [ ] 메타(title, category, date, blog_title) 추출 → watcher 인자로 전달
+- [ ] 기본 에디터로 `_src/{slug}.{ext}` 오픈 (Windows: `start ""`, mac: `open`, linux: `xdg-open`)
+- [ ] `python -m http.server $PORT` 백그라운드 시작 → 브라우저 자동 오픈 (`http://localhost:$PORT/posts/{slug}.html`)
+- [ ] `watch_and_rebuild.py` 백그라운드 시작 (engine = entry.engine, 인자 전달)
+- [ ] **사용자 편집 대기** — "편집 완료 후 답변하세요"
+- [ ] AskUserQuestion: "이 변경을 게시할까요?" (✅게시 / ❌취소)
+- [ ] ✅: watcher·서버 종료 → commit + push + PR + merge → 워크트리 정리
+- [ ] ❌: watcher·서버 종료 → 워크트리·브랜치 삭제 → push 0회로 종료
+
 ---
 
 ## 참고
@@ -423,4 +519,6 @@ git worktree remove --force "$WORKTREE_DIR"
 - 설정: `~/.claude/hams-diary.json` (`{repo, template, pagesUrl?}`)
 - 템플릿: `${PLUGIN_ROOT}/skills/diary/templates/{minimal|tech|lecture|notebook|magazine}/`
 - HTML 어댑터 빌더: `${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py`
+- 편집 모드 워처: `${PLUGIN_ROOT}/skills/diary/watch_and_rebuild.py`
 - 레포 메타: `{REPO}/.diary-meta.json` (현재 적용된 템플릿 기록)
+- 원본 백업: `{REPO}/_src/{slug}.{md|html}` (편집 모드용)

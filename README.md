@@ -91,6 +91,7 @@ Anthropic이 왜 이 기능을 안 만들었나 — 부정적 시각:
 | `/hams-diary {file.html} [category]` | HTML 시뮬레이터 1개 배포 |
 | `/hams-diary {dir/} [category]` | 폴더 일괄 배포 (`.md` + `.html`, 중복 자동 제외) |
 | `/hams-diary "{glob}" [category]` | 글롭 일괄 배포 (예: `"*.html"`) |
+| `/hams-diary --edit {slug}` | 기존 포스트 편집 — 에디터 자동 오픈 + 저장 시 자동 재빌드 |
 
 ## 플래그
 
@@ -157,7 +158,16 @@ python -m http.server 8765 (백그라운드)
 
 # 푸시는 안 하고 워크트리만 남겨 직접 손보기
 /hams-diary ./draft.md 강의 --draft
+
+# ✏️ 기존 포스트 편집 — 에디터로 자동 오픈, 저장하면 즉시 재빌드
+/hams-diary --edit msa-k8s-websocket
+#  → 기본 에디터에서 _src/msa-k8s-websocket.html 열림
+#  → 브라우저는 http://localhost:8765/posts/msa-k8s-websocket.html 자동 표시
+#  → 에디터에서 저장할 때마다 watcher 가 재빌드 ([HH:MM:SS] rebuilt 출력)
+#  → F5 로 변경 확인 → 만족하면 ✅ 게시 / ❌ 취소
 ```
+
+> **편집 모드 전제**: 배포 시점에 원본을 `_src/{slug}.{ext}` 로 백업해 두는 v2+ 포맷으로 게시된 포스트만 편집 가능하다. v1 시절(이전) 포스트는 `--overwrite` 로 한 번 재배포 후부터 편집 모드 사용 가능.
 
 ## HTML 시뮬레이터에 주입되는 것
 
