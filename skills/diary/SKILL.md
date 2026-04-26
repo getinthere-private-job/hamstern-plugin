@@ -28,7 +28,7 @@ allowed-tools:
 1. **로컬 우선** — 글은 자기 컴퓨터의 `.md` 파일로 살아있고, 블로그는 그 출력물.
 2. **목업 후 게시** — 로컬에서 미리보기 서버 → 브라우저 검수 → 승인 → push.
 3. **5가지 디자인** — `minimal` / `tech` / `lecture` / `notebook` / `magazine` 중 한 줄 명령으로 변경.
-4. **DB 없이 풍부한 기능** — 검색(Pagefind, 기본 ON) · 댓글(giscus, enabled 기본 ON 이지만 4개 data-* 값 등록 필요) · 라이트/다크 자동 변환 · 한글 파일명 안전 처리.
+4. **DB 없이 풍부한 기능** — 검색(Pagefind, 기본 ON) · 댓글(giscus, `/hams:diary giscus` 한 번 실행으로 셋업) · 라이트/다크 자동 변환 · 한글 파일명 안전 처리.
 
 ---
 
@@ -76,9 +76,12 @@ allowed-tools:
 /hams:diary config show                       # 활성 + 모든 프로파일 표시
 /hams:diary config repo {github-url}          # 활성 프로파일의 타겟 레포
 /hams:diary config template {1-5|name}        # 활성 프로파일 사이트 디자인
-/hams:diary config search {on|off}            # 활성 프로파일 Pagefind 검색
-/hams:diary config comments {on|off}          # 활성 프로파일 giscus 댓글 (on은 대화형)
+/hams:diary config search {on|off}            # Pagefind 검색 (기본 on)
+/hams:diary config comments off               # 댓글 끄기 (켜기는 `/hams:diary giscus` 별도 진입점)
 /hams:diary config blog-title "{title}"       # 활성 프로파일 블로그 제목
+
+# 댓글 셋업 (별도 진입점 — 디폴트 OFF, 필요할 때만 한 번 실행)
+/hams:diary giscus                            # Discussions 활성화 + giscus app install + 4값 자동/반자동 추출 → 저장
 
 # 프로파일 관리 (멀티 블로그 운영용)
 /hams:diary config profile list                       # 등록된 프로파일 목록 + 활성 표시
@@ -116,7 +119,7 @@ allowed-tools:
       "template": "tech",
       "blogTitle": "기술 노트",
       "pagesUrl": "https://...",
-      "features": { "search": true, "comments": { "enabled": true } }
+      "features": { "search": true, "comments": { "enabled": false } }
     }
   }
 }
@@ -141,7 +144,7 @@ if os.path.exists(p):
 **파일이 없는 경우** (publish/edit/config 호출 시): AskUserQuestion으로 첫 프로파일 repo URL 받아 다음으로 초기화:
 
 ```json
-{ "active": "default", "profiles": { "default": { "repo": "<URL>", "template": "tech", "features": { "search": true, "comments": { "enabled": true } } } } }
+{ "active": "default", "profiles": { "default": { "repo": "<URL>", "template": "tech", "features": { "search": true, "comments": { "enabled": false } } } } }
 ```
 
 `option` 호출 시에는 파일 없어도 안내만 출력 (초기화 안 함).
@@ -155,6 +158,7 @@ if os.path.exists(p):
 | `publish` | publish 흐름 (1️⃣~🔟) |
 | `edit {slug}` | edit 모드 |
 | `config <sub>` | 0-3 |
+| `giscus` | 0-3.1 — 댓글(giscus) 셋업 마법사 (검사·자동·1 클릭·저장) |
 | `option` | 0-4 (read-only) |
 | 그 외 | "알 수 없는 명령. `/hams:diary option` 으로 사용법을 확인하세요" 안내 후 종료 |
 
@@ -170,7 +174,7 @@ if os.path.exists(p):
 | `config repo {url}` | `P['repo'] = url` 갱신 |
 | `config template {1-5\|name}` | `TEMPLATES = ['minimal','tech','lecture','notebook','magazine']`. 숫자/이름 검증 후 `P['template']` 갱신 |
 | `config search on\|off` | on이면 Node.js (`npx`) 가용성 체크 + `npx -y pagefind --version` 사전 다운로드 → `P['features']['search'] = on/off` |
-| `config comments on\|off` | off는 `P['features']['comments']['enabled']=false`. on은 AskUserQuestion으로 giscus 4개 data-* 값 받아 `P['features']['comments']` 채움. 데이터 없으면 giscus.app 안내 후 종료 |
+| `config comments on\|off` | off는 `P['features']['comments']['enabled']=false`. on은 `giscus` 서브명령(0-3.1)을 그대로 위임 호출 — 댓글은 한 진입점만 두기 위함 |
 | `config blog-title "{title}"` | `P['blogTitle'] = title` |
 | `config profile list` | `cfg['profiles']` 키 목록 + `cfg['active']` 표시 |
 | `config profile add {name} {url}` | 이름 충돌 검사 → `cfg['profiles'][name] = {'repo': url, 'template': 'tech'}` 등록 |
@@ -179,13 +183,67 @@ if os.path.exists(p):
 
 모든 갱신은 `json.dump(cfg, open(p, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)` 로 저장 후 종료. publish/edit는 트리거되지 않는다.
 
-`config comments on` 시 데이터 없을 때 안내문:
+### 0-3.1 `giscus` 서브명령 — 댓글 셋업 마법사
+
+**왜 별도 진입점인가**
+- 댓글은 발행 흐름에 끼우면 사용자가 "예" 한 후 줄줄이 이어지는 외부 단계 (Discussions 활성화 + giscus app install + 4 값) 에 부담 느끼고 그냥 포기하는 경우가 흔함.
+- 그래서 publish/edit 첫 호출 시 묻지 않는다 — `features.comments.enabled` **디폴트 false**.
+- 댓글이 필요한 사용자만 한 번 `/hams:diary giscus` 실행 → 마법사가 자동/안내 섞어 셋업 → 다음 publish/rebuild 부터 자동 적용.
+
+**흐름 (Claude 가 따를 순서)**
+
+1. **활성 프로파일 P 로드.** `repo` 없으면 "먼저 `/hams:diary config repo {url}` 로 레포 등록하세요" 안내 후 종료.
+2. **사용자에게 통합 안내 출력 (한 번)**:
+   ```
+   💬 giscus 댓글 셋업 — 약 1 분
+   
+   필요한 작업:
+   ① 레포의 GitHub Discussions 활성화 (1 클릭)
+   ② giscus GitHub App 설치 (1 클릭)
+   ③ 4 개 data-* 값 — 가능한 만큼 자동, 안 되면 1 회 복사
+   
+   GitHub PAT 가 환경변수 GH_TOKEN / GITHUB_TOKEN 또는 gh auth 에 있으면 ①·③ 모두 자동.
+   없으면 직접 링크 클릭 + 1 값 복사.
+   ```
+3. **PAT 감지** — `os.environ.get('GH_TOKEN') or os.environ.get('GITHUB_TOKEN')`, 없으면 `gh auth token` 시도 (gh 설치돼 있을 때만).
+4. **Discussions 활성화 확인 + 시도**
+   - `GET https://api.github.com/repos/{owner}/{repo}` → `has_discussions` 확인
+   - false 면:
+     - PAT 있으면: `PATCH /repos/{owner}/{repo}` `{"has_discussions": true}` → 200 확인
+     - PAT 없으면: `https://github.com/{owner}/{repo}/settings#features` 링크 출력 + AskUserQuestion("활성화 끝났으면 OK")
+5. **giscus app 설치 안내 (항상 1 클릭 필수 — GitHub 정책)**
+   ```
+   👇 다음 링크 한 번 클릭 → "Install" 또는 "Configure" 버튼만 누르면 끝
+   https://github.com/apps/giscus/installations/select_target
+   ```
+   AskUserQuestion("Install 끝났으면 OK / 이미 설치돼 있음 / 건너뛰기")
+6. **4 개 값 추출**
+   - `data-repo` = `{owner}/{repo}` (config 에서 파생, 항상 확보)
+   - `data-repo-id` = `GET /repos/{owner}/{repo}` 응답의 `node_id` (공개 레포는 인증 없이도 OK)
+   - `data-category` = "Announcements" (Discussions 활성화 시 자동 생성됨)
+   - `data-category-id`:
+     - PAT 있으면: GraphQL `repository(owner,name) { discussionCategories(first:10) { nodes { id name } } }` 에서 `name == "Announcements"` 노드의 id
+     - PAT 없으면: `https://giscus.app` 링크 안내 + AskUserQuestion 으로 한 값 복사 받기
+7. **저장**: `P['features']['comments'] = { enabled: true, repo, repoId, category, categoryId, mapping: 'pathname', theme: 'preferred_color_scheme', lang: 'ko' }`
+8. **즉시 반영 옵션**: AskUserQuestion: "기존 글에 댓글 영역 즉시 추가 (publish --rebuild all)?"
+   - Yes → publish 흐름의 `--rebuild all` 분기로 위임 (어댑터에 `--comments-*` 인자 전달됨, 5️⃣ 참조)
+   - No → "다음 publish/edit 부터 자동 적용됩니다" 안내 후 종료
+
+**오류 처리**
+- 4 단계 PATCH 401 → "PAT 권한 부족 — `repo` scope 필요" 안내
+- 5 단계 사용자 "건너뛰기" → `enabled: false` 로 저장하고 종료 (다시 실행 가능)
+- 6 단계 GraphQL 401 → 6단계 PAT 없음 분기로 폴백
+- repo 가 private 인데 PAT 없으면 → "private 레포는 PAT 필수" 안내 후 종료
+
+**참고 — `/hams:diary config comments on` 도 위 마법사를 그대로 실행** (별칭 관계). `off` 만 별도: `P['features']['comments']['enabled'] = false` 저장 후 종료.
+
+옛 `config comments on` 시 데이터 없을 때 안내문 (호환용):
 ```
 1. https://giscus.app 방문
 2. Repository 입력 (예: owner/blog)
 3. Discussion category 선택 (Announcements 권장)
 4. 페이지 하단의 data-* 4개 값(repo / repo-id / category / category-id) 복사
-5. /hams:diary config comments on 다시 실행해 입력
+5. /hams:diary giscus 다시 실행해 입력
 ```
 
 ### 0-4. `option` 서브명령 (read-only)
@@ -252,7 +310,7 @@ if os.path.exists(p):
     template:    <P.template>
     blogTitle:   <P.blogTitle 또는 (미설정)>
     search:      <on|off> (기본 on)
-    comments:    <on|off> (기본 on, giscus 4개 값 등록 시 노출)
+    comments:    <on|off> (기본 off — `/hams:diary giscus` 한 번 실행으로 셋업)
 
 💾 옛 flat 형태({repo, template, ...})는 첫 호출 시 자동으로 default 프로파일로 변환되며 ~/.claude/hams-diary.json.bak 에 백업됩니다.
 
@@ -279,7 +337,7 @@ if os.path.exists(p):
 | `PAGES_URL` | `P['pagesUrl']` 또는 `https://${OWNER}.github.io/${NAME}/` |
 | `TEMPLATE` | `P['template']` (기본 `tech`) |
 | `BLOG_TITLE` | `P['blogTitle']` (없으면 첫 배포 시 AskUserQuestion으로 받아 P에 저장) |
-| `FEATURES` | `P['features']` (없으면 `{search: true, comments: {enabled: true}}` — 디폴트 ON) |
+| `FEATURES` | `P['features']` (없으면 `{search: true, comments: {enabled: false}}` — 검색만 ON, 댓글은 `/hams:diary giscus` 로 별도 셋업) |
 | `LOCAL_DIR` | `/tmp/${REPO_NAME}-${PROFILE_NAME}` (프로파일별 분리) |
 | `WORKTREE_DIR` | `/tmp/${REPO_NAME}-${PROFILE_NAME}-preview-${TS}` |
 
@@ -438,9 +496,17 @@ sed -e "s|{{POST_TITLE}}|${TITLE}|g" \
 
 ```bash
 # inject_html_adapter.py 호출
+# features.comments.enabled === true 이고 4개 값이 모두 있으면 --comments-* 인자 전달
+COMMENTS_ARGS=""
+if [ "$FEATURES_COMMENTS_ENABLED" = "true" ] \
+   && [ -n "$COMMENTS_REPO" ] && [ -n "$COMMENTS_REPO_ID" ] \
+   && [ -n "$COMMENTS_CATEGORY" ] && [ -n "$COMMENTS_CATEGORY_ID" ]; then
+  COMMENTS_ARGS="--comments-repo $COMMENTS_REPO --comments-repo-id $COMMENTS_REPO_ID --comments-category $COMMENTS_CATEGORY --comments-category-id $COMMENTS_CATEGORY_ID"
+fi
+
 python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
   --src "${SRC}" --dst "posts/${slug}.html" --title "${TITLE}" \
-  ${NO_THEME:+--no-theme}
+  ${NO_THEME:+--no-theme} $COMMENTS_ARGS
 ```
 
 배치 모드는 `--map` JSON 으로 한 번에 호출 가능.
@@ -491,16 +557,18 @@ posts.json 의 두 필드에 기록:
 <!-- search disabled -->
 ```
 
-### `{{COMMENTS_BLOCK}}` (_post-frame.html 안, 본문 직후)
+### `{{COMMENTS_BLOCK}}` (_post-frame.html — MD 엔진) / `inject_html_adapter.py --comments-*` (HTML 엔진)
 
-조건: `features.comments.enabled === true` **AND** 4 개 data-* 값 (`repo`, `repoId`, `category`, `categoryId`) 이 모두 채워져 있을 때만 giscus iframe 을 emit. 디폴트는 `enabled: true` 지만 4 개 값은 `config comments on` 으로 별도 등록해야 채워진다 — 미등록 상태에선 emit 보류 + 빌드 로그에 안내문 1 회 출력:
+조건: `features.comments.enabled === true` **AND** 4 개 data-* 값 (`repo`, `repoId`, `category`, `categoryId`) 이 모두 채워져 있을 때만 giscus 블록 emit.
 
-```
-ℹ️  features.comments.enabled=true 이지만 giscus.app 4 개 값이 비어 있어 댓글 영역은 emit 보류됐습니다.
-   /hams:diary config comments on 으로 등록하세요.
-```
+- **디폴트는 `enabled: false`** — 댓글이 필요한 사용자만 한 번 `/hams:diary giscus` 실행해서 셋업 (마법사 흐름은 0-3.1 참조)
+- 셋업 후엔 publish/edit/--rebuild 모두 자동으로 댓글 블록 포함
+- 4 개 값 중 하나라도 비면: emit 안 하고 빌드 로그에 1 회 안내 ("`/hams:diary giscus` 로 셋업하세요")
 
-조건 충족 시:
+**MD 엔진**: `_post-frame.html` 의 `{{COMMENTS_BLOCK}}` 자리에 치환.
+**HTML 엔진**: 어댑터의 `--comments-repo / --repo-id / --category / --category-id` 인자로 전달 → `</body>` 직전 `<!-- hamstern:comments:start --> ... :end -->` 마커 블록으로 주입 (idempotent).
+
+조건 충족 시 (MD 엔진 치환 결과 / HTML 어댑터 주입 결과 동일 형태):
 ```html
 <section class="comments">
   <h3>💬 토론</h3>

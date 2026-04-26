@@ -282,7 +282,50 @@ def detect_source_theme(html: str) -> str:
     return 'dark'
 
 
-def inject(html: str, title: str, with_theme: bool = True) -> str:
+GISCUS_MARKER_START = '<!-- hamstern:comments:start -->'
+GISCUS_MARKER_END = '<!-- hamstern:comments:end -->'
+
+
+def make_giscus_block(repo: str, repo_id: str, category: str, category_id: str,
+                      mapping: str = 'pathname', theme: str = 'preferred_color_scheme',
+                      lang: str = 'ko') -> str:
+    return f'''
+  {GISCUS_MARKER_START}
+  <section class="osd-comments" style="max-width: 900px; margin: 32px auto; padding: 0 24px;">
+    <h3 style="font-size: 18px; color: var(--text, #e8eef9); margin: 0 0 12px;">💬 댓글</h3>
+    <script src="https://giscus.app/client.js"
+            data-repo="{repo}"
+            data-repo-id="{repo_id}"
+            data-category="{category}"
+            data-category-id="{category_id}"
+            data-mapping="{mapping}"
+            data-strict="0"
+            data-reactions-enabled="1"
+            data-emit-metadata="0"
+            data-input-position="bottom"
+            data-theme="{theme}"
+            data-lang="{lang}"
+            crossorigin="anonymous"
+            async></script>
+  </section>
+  <script>
+    (function(){{
+      var orig = window.__osdSetTheme || function(){{}};
+      window.__osdSetTheme = function(t){{
+        orig(t);
+        var iframe = document.querySelector('iframe.giscus-frame');
+        if (iframe) iframe.contentWindow.postMessage(
+          {{ giscus: {{ setConfig: {{ theme: t === 'dark' ? 'dark' : 'light' }} }} }},
+          'https://giscus.app'
+        );
+      }};
+    }})();
+  </script>
+  {GISCUS_MARKER_END}
+'''
+
+
+def inject(html: str, title: str, with_theme: bool = True, comments=None) -> str:
     source_theme = detect_source_theme(html) if with_theme else 'dark'
     style = ADAPTER_STYLE_FULL if with_theme else ADAPTER_STYLE_NOTHEME
     style = style.replace('__SOURCE_THEME__', source_theme)
@@ -298,6 +341,26 @@ def inject(html: str, title: str, with_theme: bool = True) -> str:
     new2 = re.sub(r'(<body\b[^>]*>)', r'\1' + body_payload, new, count=1, flags=re.IGNORECASE)
     if new2 == new:
         new2 = '<body>' + body_payload + new + '</body>'
+
+    # Optional giscus comments — emit only when 4 values all present (idempotent)
+    if comments and all(comments.get(k) for k in ('repo', 'repo_id', 'category', 'category_id')):
+        new2 = re.sub(
+            re.escape(GISCUS_MARKER_START) + r'.*?' + re.escape(GISCUS_MARKER_END),
+            '', new2, flags=re.DOTALL,
+        )
+        block = make_giscus_block(
+            repo=comments['repo'],
+            repo_id=comments['repo_id'],
+            category=comments['category'],
+            category_id=comments['category_id'],
+            mapping=comments.get('mapping', 'pathname'),
+            theme=comments.get('theme', 'preferred_color_scheme'),
+            lang=comments.get('lang', 'ko'),
+        )
+        if '</body>' in new2:
+            new2 = new2.replace('</body>', block + '\n</body>', 1)
+        else:
+            new2 = new2 + block
     return new2
 
 
@@ -333,9 +396,21 @@ def main(argv=None):
     ap.add_argument('--dst-dir', help='Destination directory (batch)')
     ap.add_argument('--map', help='JSON file: [{"src":"a.html","dst":"slug.html","title":"..."}, ...]')
     ap.add_argument('--no-theme', action='store_true', help='Skip light/dark adapter, only full-width + bar')
+    ap.add_argument('--comments-repo', help='giscus data-repo (e.g. owner/repo)')
+    ap.add_argument('--comments-repo-id', help='giscus data-repo-id (R_kgDO...)')
+    ap.add_argument('--comments-category', help='giscus data-category (e.g. Announcements)')
+    ap.add_argument('--comments-category-id', help='giscus data-category-id (DIC_kwDO...)')
     args = ap.parse_args(argv)
 
     with_theme = not args.no_theme
+    comments = None
+    if all([args.comments_repo, args.comments_repo_id, args.comments_category, args.comments_category_id]):
+        comments = {
+            'repo': args.comments_repo,
+            'repo_id': args.comments_repo_id,
+            'category': args.comments_category,
+            'category_id': args.comments_category_id,
+        }
     jobs = []
 
     if args.map:
@@ -360,7 +435,7 @@ def main(argv=None):
     for j in jobs:
         with open(j['src'], 'r', encoding='utf-8') as f:
             html = f.read()
-        out = inject(html, j['title'], with_theme=with_theme)
+        out = inject(html, j['title'], with_theme=with_theme, comments=comments)
         os.makedirs(os.path.dirname(os.path.abspath(j['dst'])), exist_ok=True)
         with open(j['dst'], 'w', encoding='utf-8') as f:
             f.write(out)
