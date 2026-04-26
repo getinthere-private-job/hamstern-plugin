@@ -243,6 +243,8 @@ python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
 
 배치 모드는 `--map` JSON 으로 한 번에 호출 가능.
 
+> 어댑터는 원본 HTML 의 dominant background 를 자동 감지해 `data-osd-source-theme="light|dark"` 로 표시한다. 사용자가 선택한 블로그 테마와 톤이 다를 때만 invert 필터를 걸어 자동 변환하므로, 라이트 톤 원본(예: 베이지) 도 다크 블로그에서 자연스럽게 보인다. (감지 실패 시 기존 동작인 `dark` 가정.)
+
 ### 원본 소스 보존 (`_src/`)
 
 배포 시 원본 파일을 워크트리의 `_src/{slug}.{ext}` 로도 복사한다. 나중에 `--edit {slug}` 로 편집할 때 이 원본을 에디터에 열어준다.
