@@ -306,15 +306,166 @@ rm -f .hamstern/.deeptalk-running
 
 ## §list — 등록된 룰 목록 출력
 
-(Task 4에서 채움)
+### Step L1: 룰 파일 수집
+
+```bash
+ls .claude/rules/*.md 2>/dev/null
+```
+
+대상은 `.claude/rules/` 직속 `.md` 파일만 (references/ 하위는 제외). 셸 글로브 `*.md` 는 직속만 매칭하므로 references/ 하위 파일은 자동으로 제외됨.
+
+파일이 없으면 다음 메시지 출력 후 종료:
+
+```
+📂 등록된 룰이 없습니다.
+   새 룰 등록    : /hams:rule add
+   why로 시작    : /hams:why "...문제 설명..."
+```
+
+### Step L2: 각 포인터 파싱
+
+각 파일에 대해 Read 호출하여 다음 추출:
+
+- 파일명 → topic (확장자 제거)
+- 본문에서 `## ` 헤더 라인 → 원칙명 (한국어 title)
+- `**원칙:**` 라인 → 원칙 한 문장
+- `**적용 트리거:**` 라인 → 트리거 텍스트
+- frontmatter `paths:` 존재 여부 → 적용 범위 (전역 / paths 글로브 목록)
+  - frontmatter가 없으면 → "전역"
+  - `paths:` 항목이 있으면 → 글로브 모두 콤마로 연결 (예: `src/components/**, src/api/**`)
+
+### Step L3: 표 출력
+
+다음 형식으로 출력 (마크다운 표):
+
+```
+📋 등록된 룰 ({n}건)
+
+| topic | 원칙 | 트리거 | 적용 범위 |
+|-------|------|--------|-----------|
+| table-header-layout | 헤더는 좌상=검색, 우상=정렬 | Table 작성 시 | 전역 |
+| api-cache-first | API 호출 전 캐시 확인 | fetch/query 작업 시 | src/api/** |
+
+상세 보기 : /hams:rule edit {topic}
+삭제      : /hams:rule remove {topic}
+```
+
+원칙·트리거가 60자를 초과하면 60자에서 truncate하고 `…` 추가. topic·적용 범위는 truncate하지 않음 (식별자/경로는 정확해야 함).
 
 ## §edit — 룰 수정
 
-(Task 4에서 채움)
+### Step E1: topic 인자 검증
+
+호출: `/hams:rule edit {topic}`
+
+`{topic}` 인자가 없으면:
+```
+사용법: /hams:rule edit {topic}
+현재 룰 목록은 /hams:rule list
+```
+출력 후 종료.
+
+### Step E2: 파일 존재 확인
+
+```bash
+test -f .claude/rules/{topic}.md && test -d .claude/rules/references/{topic}
+```
+
+둘 중 하나라도 없으면:
+```
+❌ {topic} 룰을 찾을 수 없습니다.
+   등록된 룰    : /hams:rule list
+   잠정 룰 격상 : /hams:rule promote {topic}
+```
+
+### Step E3: 모든 관련 파일 표시
+
+다음을 모두 Read 하여 사용자에게 코드 블록으로 노출:
+
+- `.claude/rules/{topic}.md` (포인터)
+- `.claude/rules/references/{topic}/rule.md`
+- `.claude/rules/references/{topic}/examples.md`
+- `.claude/rules/references/{topic}/mockup.html` (있을 때만 — `test -f` 로 확인)
+- `.claude/rules/references/{topic}/history.md`
+
+각 파일을 별도 코드 블록(언어 태그 포함: `markdown`, `html`)으로 출력하여 한눈에 보이게 한다. 그 다음 묻는다:
+
+```
+어디를 어떻게 수정할까요?
+예) "원칙 문장을 'X'로 바꿔줘", "examples에 좋은 예시 코드 추가해줘", "paths를 src/api/**로 좁혀줘"
+```
+
+### Step E4: 사용자 지시 적용
+
+사용자 응답을 받아 정확한 Edit 도구 호출로 변환. 한 번에 여러 파일 수정 가능. 모호한 지시(예: "그 부분 좀 더 명확하게")가 있으면:
+
+> "다음을 수정합니다: ... 진행할까요?"
+
+`AskUserQuestion`으로 1회 확인 후 진행.
+
+### Step E5: 완료 메시지
+
+```
+✅ 룰 수정 완료
+   수정된 파일:
+     - .claude/rules/{topic}.md
+     - .claude/rules/references/{topic}/rule.md (예시)
+```
+
+수정된 파일만 나열 (수정 안 한 파일은 메시지에 포함하지 않음).
 
 ## §remove — 룰 삭제
 
-(Task 4에서 채움)
+### Step R1: topic 인자 검증
+
+호출: `/hams:rule remove {topic}`
+
+`{topic}` 인자가 없으면 §edit Step E1 와 동일하게 사용법 출력 후 종료.
+
+### Step R2: 존재 확인 + 삭제 대상 표시
+
+```bash
+test -f .claude/rules/{topic}.md
+```
+
+존재하지 않으면:
+```
+❌ {topic} 룰이 없습니다.
+   현재 룰 목록 : /hams:rule list
+```
+
+존재하면 다음 출력 (mockup.html 유무는 `test -f` 로 확인하여 메시지에 반영):
+
+```
+다음을 삭제합니다:
+  - .claude/rules/{topic}.md (포인터)
+  - .claude/rules/references/{topic}/ (폴더 전체)
+    └ rule.md, examples.md, [mockup.html], history.md
+```
+
+### Step R3: 확인 (`AskUserQuestion`)
+
+옵션 2개:
+1. 삭제 진행
+2. 취소
+
+### Step R4: 삭제
+
+승인 시:
+
+```bash
+rm .claude/rules/{topic}.md
+rm -rf .claude/rules/references/{topic}/
+```
+
+### Step R5: 완료 메시지
+
+```
+🗑️  {topic} 룰 삭제 완료
+   포인터 + references 폴더 모두 제거됨
+```
+
+(연관된 `.hamstern/why/rules/{topic}.md` 가 있어도 건드리지 않음 — 그건 별개 자산이며, 사용자가 명시적으로 `/hams:rule promote` 로 다시 격상할 수 있어야 한다.)
 
 ## §promote — .hamstern/why/rules/ 에서 수동 격상
 
