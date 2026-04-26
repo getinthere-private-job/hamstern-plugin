@@ -3,7 +3,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _gate import is_hamstern_project
+from _gate import is_hamstern_project, is_noise_command
 
 
 def is_app_running(cwd: str) -> bool:
@@ -30,6 +30,8 @@ def is_deeptalk_running(cwd: str) -> bool:
 
 def record_prompt(session_id: str, cwd: str, prompt: str) -> None:
     if is_app_running(cwd) or is_deeptalk_running(cwd):
+        return
+    if is_noise_command(prompt):
         return
     baby_dir = Path(cwd) / ".hamstern" / "baby-hamster"
     baby_dir.mkdir(parents=True, exist_ok=True)

@@ -2,7 +2,31 @@ import sys, json
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from _gate import is_hamstern_project
+from _gate import is_hamstern_project, is_noise_command
+
+
+def _latest_user_prompt(transcript_path: str) -> str:
+    """Read the most recent user message from the transcript.
+
+    Used to detect whether the just-finished turn was triggered by a noise
+    slash command (diary/registry-collector/skill-creator/skill-picker), in
+    which case the assistant's reply — typically very long — should NOT be
+    recorded into baby-hamster.
+    """
+    if not transcript_path or not Path(transcript_path).exists():
+        return ""
+    try:
+        lines = Path(transcript_path).read_text(encoding="utf-8").strip().splitlines()
+        msgs = [json.loads(l) for l in lines if l.strip()]
+        user_msgs = [m for m in msgs if m.get("role") == "user"]
+        if not user_msgs:
+            return ""
+        content = user_msgs[-1].get("content", "")
+        if isinstance(content, list):
+            content = " ".join(c.get("text", "") for c in content if isinstance(c, dict))
+        return str(content)
+    except Exception:
+        return ""
 
 
 def is_app_running(cwd: str) -> bool:
@@ -25,6 +49,8 @@ def is_deeptalk_running(cwd: str) -> bool:
 
 def record_stop(session_id: str, cwd: str, transcript_path: str) -> None:
     if is_app_running(cwd) or is_deeptalk_running(cwd):
+        return
+    if is_noise_command(_latest_user_prompt(transcript_path)):
         return
     baby = Path(cwd) / ".hamstern" / "baby-hamster" / f"session_{session_id}.md"
     if not baby.exists():

@@ -14,6 +14,7 @@
       "source": "./",
       "skills": [
         "./skills/skill-picker",
+        "./skills/skill-creator",
         "./skills/dashboard",
         "./skills/audit-decisions",
         "./skills/registry-collector",
