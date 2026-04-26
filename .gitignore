@@ -1,0 +1,27 @@
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editor / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Superpowers ephemeral session state (brainstorm scratch dirs, server PIDs, etc.)
+.superpowers/
+
+# Local dev artifacts
+*.log
+*.pid
+.env
+.env.local
