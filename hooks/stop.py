@@ -1,8 +1,24 @@
-import sys, json
+import sys, json, subprocess
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from _gate import is_hamstern_project, is_noise_command
+
+PLUGIN_ROOT = Path(__file__).resolve().parent.parent
+AGGREGATE_SCRIPT = PLUGIN_ROOT / "skills" / "dashboard" / "scripts" / "aggregate.py"
+
+
+def _trigger_aggregate(cwd: str) -> None:
+    """Best-effort baby→mom aggregation at session end. Failure is silent."""
+    try:
+        subprocess.run(
+            [sys.executable, str(AGGREGATE_SCRIPT), cwd],
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+    except Exception:
+        pass
 
 
 def _latest_user_prompt(transcript_path: str) -> str:
@@ -70,6 +86,7 @@ def record_stop(session_id: str, cwd: str, transcript_path: str) -> None:
             pass
     with baby.open("a", encoding="utf-8") as f:
         f.write(f"**Claude:** {last_msg}\n")
+    _trigger_aggregate(cwd)
 
 def main():
     try:

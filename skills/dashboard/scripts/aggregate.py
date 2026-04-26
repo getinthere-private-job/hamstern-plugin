@@ -1,14 +1,30 @@
+import os
 import re
+import tempfile
 from pathlib import Path
 from datetime import datetime, timezone
+
+
+def _atomic_write(target: Path, content: str) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(
+        dir=str(target.parent), prefix=".mom.", suffix=".tmp"
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(tmp_path, str(target))
+    except Exception:
+        Path(tmp_path).unlink(missing_ok=True)
+        raise
+
 
 def aggregate_baby_to_mom(project_root: str) -> None:
     baby_dir = Path(project_root) / ".hamstern" / "baby-hamster"
     mom_file = Path(project_root) / ".hamstern" / "mom-hamster" / "mom.md"
-    mom_file.parent.mkdir(parents=True, exist_ok=True)
 
     if not baby_dir.exists():
-        mom_file.write_text("# Mom MD\n\n(baby MD 없음)\n", encoding="utf-8")
+        _atomic_write(mom_file, "# Mom MD\n\n(baby MD 없음)\n")
         return
 
     babies = sorted(baby_dir.glob("*.md"), key=lambda f: f.stat().st_mtime)
@@ -26,8 +42,12 @@ def aggregate_baby_to_mom(project_root: str) -> None:
 
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
     header = f"# Mom MD\n\n_집계: {ts} | {len(parts)}개 세션_\n\n"
-    mom_file.write_text(header + "\n\n---\n\n".join(parts), encoding="utf-8")
+    _atomic_write(mom_file, header + "\n\n---\n\n".join(parts))
+
 
 if __name__ == "__main__":
     import sys
-    aggregate_baby_to_mom(sys.argv[1] if len(sys.argv) > 1 else ".")
+    if len(sys.argv) < 2:
+        print("usage: python3 aggregate.py <project_root>", file=sys.stderr)
+        sys.exit(2)
+    aggregate_baby_to_mom(sys.argv[1])
