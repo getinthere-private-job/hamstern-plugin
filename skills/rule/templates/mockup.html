@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Rule: {{title}}</title>
+<style>
+body { font-family: -apple-system, sans-serif; padding: 20px; max-width: 900px; margin: 0 auto; }
+h1 { border-bottom: 2px solid #333; padding-bottom: 8px; }
+h2 { margin-top: 32px; }
+.example { border: 1px solid #ddd; border-radius: 6px; padding: 16px; margin: 12px 0; }
+.bad { border-color: #c33; background: #fdd; }
+.good { border-color: #393; background: #dfd; }
+.label { font-weight: bold; margin-bottom: 8px; }
+{{custom_css}}
+</style>
+</head>
+<body>
+<h1>{{title}}</h1>
+<p><strong>원칙:</strong> {{principle}}</p>
+
+<h2>✅ 올바른 패턴</h2>
+<div class="example good">
+<div class="label">good example</div>
+{{good_html}}
+</div>
+
+<h2>❌ 잘못된 패턴</h2>
+<div class="example bad">
+<div class="label">bad example</div>
+{{bad_html}}
+</div>
+</body>
+</html>
