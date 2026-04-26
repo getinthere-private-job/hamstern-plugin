@@ -39,3 +39,18 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); }
   .nb-sidebar { position: static; height: auto; }
   .nb-main { padding: 24px; }
 }
+
+/* Search (Pagefind) */
+.osd-search {
+  margin: 0 0 24px;
+  --pagefind-ui-primary: var(--accent);
+  --pagefind-ui-text: var(--text);
+  --pagefind-ui-background: var(--bg-cell);
+  --pagefind-ui-border: var(--border);
+  --pagefind-ui-tag: var(--bg-side);
+  --pagefind-ui-font: var(--mono);
+}
+
+/* Comments (giscus) */
+.comments { margin: 56px 0 0; padding: 24px 22px; background: var(--bg-cell); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 0 8px 8px 0; }
+.comments h3 { font-family: var(--mono); font-size: 14px; color: var(--code); margin-bottom: 16px; }

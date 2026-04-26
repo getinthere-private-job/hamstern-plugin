@@ -58,6 +58,7 @@
       <div class="post-content">
 {{POST_HTML}}
       </div>
+      {{COMMENTS_BLOCK}}
     </article>
   </main>
 
@@ -70,6 +71,7 @@
         var next = cur === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', next);
         try { localStorage.setItem('blog-theme', next); } catch(e){}
+        if (window.__osdSetTheme) window.__osdSetTheme(next);
       });
     })();
   </script>

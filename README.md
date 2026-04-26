@@ -92,6 +92,10 @@ Anthropic이 왜 이 기능을 안 만들었나 — 부정적 시각:
 | `/hams-diary {dir/} [category]` | 폴더 일괄 배포 (`.md` + `.html`, 중복 자동 제외) |
 | `/hams-diary "{glob}" [category]` | 글롭 일괄 배포 (예: `"*.html"`) |
 | `/hams-diary --edit {slug}` | 기존 포스트 편집 — 에디터 자동 오픈 + 저장 시 자동 재빌드 |
+| `/hams-diary --enable-search` | Pagefind 풀텍스트 검색 켜기 (opt-in) |
+| `/hams-diary --disable-search` | 검색 끄기 |
+| `/hams-diary --enable-comments` | giscus 댓글 켜기 — 대화형 설정 (opt-in) |
+| `/hams-diary --disable-comments` | 댓글 끄기 |
 
 ## 플래그
 
@@ -168,6 +172,45 @@ python -m http.server 8765 (백그라운드)
 ```
 
 > **편집 모드 전제**: 배포 시점에 원본을 `_src/{slug}.{ext}` 로 백업해 두는 v2+ 포맷으로 게시된 포스트만 편집 가능하다. v1 시절(이전) 포스트는 `--overwrite` 로 한 번 재배포 후부터 편집 모드 사용 가능.
+
+## 🔍 검색 · 💬 댓글 (opt-in)
+
+DB·서버 추가 없이 두 가지를 켤 수 있다. 둘 다 기본 OFF.
+
+### 검색 (Pagefind)
+
+빌드 시점에 모든 포스트의 풀텍스트 인덱스를 정적 파일(`pagefind/`)로 출력. 브라우저가 필요한 인덱스 조각만 fetch 해서 검색. **Algolia·Elasticsearch 같은 외부 서비스 불필요**.
+
+```bash
+/hams-diary --enable-search   # Node.js 18+ 필요 (npx pagefind 호출)
+/hams-diary ./new-post.md 강의   # 다음 배포부터 모든 포스트가 인덱싱됨
+```
+
+홈 화면에 검색창이 자동으로 생기고, 본문 안 단어로 즉시 결과 매칭.
+
+### 댓글 (giscus)
+
+각 포스트가 GitHub Discussion 1개에 매핑. 학생이 GitHub 계정으로 댓글 달면 곧바로 Discussion 에 글이 쌓임. **Disqus 광고·자체 DB 불필요**.
+
+설정 단계 (1회):
+1. GitHub 레포에서 Discussions 활성화 (Settings → Features)
+2. https://giscus.app 에서 [giscus app 설치 + 설정](https://giscus.app)
+3. 페이지 하단의 `data-repo`, `data-repo-id`, `data-category`, `data-category-id` 4개 값 복사
+4. `/hams-diary --enable-comments` 실행 → 4개 값 입력
+
+이후 모든 포스트 하단에 giscus iframe 자동 임베드. 라이트/다크 토글 시 댓글 영역도 함께 변환.
+
+```bash
+/hams-diary --enable-comments       # 대화형 설정
+/hams-diary --disable-comments      # 끄기 (이미 단 댓글은 GitHub 에 그대로 보존)
+```
+
+### 의존성 한눈에
+
+| 기능 | 추가 필요 |
+|------|-----------|
+| 검색 | Node.js 18+ (브라우저 측은 0 dep) |
+| 댓글 | GitHub Discussions 활성화 + giscus 앱 설치 |
 
 ## HTML 시뮬레이터에 주입되는 것
 

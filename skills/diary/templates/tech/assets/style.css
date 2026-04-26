@@ -445,3 +445,29 @@ a { color: inherit; text-decoration: none; }
   .posts { padding: 40px 16px; }
   .posts__list { grid-template-columns: 1fr; }
 }
+
+/* === Search (Pagefind) =================================== */
+.osd-search {
+  margin: 18px 0 24px;
+  --pagefind-ui-primary: var(--accent);
+  --pagefind-ui-text: var(--text);
+  --pagefind-ui-background: var(--bg-elevated);
+  --pagefind-ui-border: var(--border);
+  --pagefind-ui-tag: var(--bg-soft);
+  --pagefind-ui-border-radius: var(--radius-md);
+  --pagefind-ui-font: var(--font-sans);
+}
+
+/* === Comments (giscus) =================================== */
+.comments {
+  margin-top: 64px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+}
+.comments h3 {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  margin-bottom: 20px;
+  color: var(--text);
+}

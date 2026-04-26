@@ -44,6 +44,20 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); }
 .mag-card__title { font-family: var(--serif); font-size: 22px; line-height: 1.25; letter-spacing: -0.4px; margin-bottom: 8px; }
 .mag-card__summary { color: var(--muted); font-size: 14px; line-height: 1.6; }
 .mag-foot { padding: 32px; text-align: center; font-size: 12px; color: var(--muted); border-top: 1px solid var(--border); letter-spacing: 1px; }
+
+/* Search (Pagefind) */
+.osd-search {
+  max-width: 1280px; margin: 0 auto; padding: 24px 48px;
+  --pagefind-ui-primary: var(--accent);
+  --pagefind-ui-text: var(--text);
+  --pagefind-ui-background: var(--bg-card);
+  --pagefind-ui-border: var(--border);
+  --pagefind-ui-font: var(--sans);
+}
+
+/* Comments (giscus) */
+.comments { margin-top: 56px; padding-top: 28px; border-top: 2px solid var(--text); }
+.comments h3 { font-family: var(--serif); font-size: 22px; letter-spacing: -0.4px; margin-bottom: 18px; }
 @media (max-width: 880px) {
   .mag-feature { grid-template-columns: 1fr; padding: 32px 24px; gap: 32px; }
   .mag-feature__sidebar { border-left: 0; padding-left: 0; border-top: 1px solid var(--border); padding-top: 24px; }

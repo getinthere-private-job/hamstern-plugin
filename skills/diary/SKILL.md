@@ -10,6 +10,8 @@ description: |
     /hams-diary --edit {slug}
     /hams-diary --set-repo {github-url}
     /hams-diary --set-template {1-5|name}
+    /hams-diary --enable-search | --disable-search
+    /hams-diary --enable-comments | --disable-comments
 allowed-tools:
   - Bash
   - Read
@@ -29,6 +31,7 @@ allowed-tools:
 3. **5가지 디자인 템플릿** — `minimal`, `tech`, `lecture`, `notebook`, `magazine` 중 선택
 4. **중복 자동 제외** — 배치 모드에서 같은 slug 의 포스트는 skip (--overwrite 로 강제)
 5. **편집 모드** — `--edit {slug}` 로 기존 포스트를 에디터에 열고 저장 시 자동 재빌드, 미리보기 새로고침
+6. **검색·댓글 (opt-in)** — Pagefind 풀텍스트 검색·giscus GitHub Discussions 댓글, DB 0개로 추가 가능
 
 ---
 
@@ -48,6 +51,12 @@ allowed-tools:
 /hams-diary {input} --overwrite                 # 기존 동일 slug 덮어쓰기
 /hams-diary {input} --draft                     # 푸시하지 않고 워크트리만 남김
 /hams-diary {input} --preview-port 9000         # 미리보기 서버 포트 변경 (기본 8765)
+
+# 기능 토글 (opt-in)
+/hams-diary --enable-search                     # Pagefind 풀텍스트 검색 켜기
+/hams-diary --disable-search                    # 검색 끄기
+/hams-diary --enable-comments                   # giscus 댓글 켜기 (대화형)
+/hams-diary --disable-comments                  # 댓글 끄기
 ```
 
 ---
@@ -72,11 +81,60 @@ TEMPLATES = ['minimal','tech','lecture','notebook','magazine']
 
 저장 후 종료.
 
+### `--enable-search` / `--disable-search` 분기
+
+```bash
+# 1) Node.js 가용성 체크 (활성화 시에만)
+if ! command -v npx >/dev/null 2>&1; then
+  echo "❌ Node.js 18+ 가 필요합니다. https://nodejs.org 에서 설치 후 재시도하세요."
+  exit 1
+fi
+npx -y pagefind --version 2>/dev/null   # 사전 다운로드(첫 실행만 시간 걸림)
+
+# 2) features.search 토글
+python3 -c "import json; p='$HOME/.claude/hams-diary.json'; \
+  d=json.load(open(p)); d.setdefault('features',{}); \
+  d['features']['search']=$ENABLE; json.dump(d, open(p,'w'))"
+```
+
+저장 후 종료. `$ENABLE` 은 enable=true / disable=false.
+
+### `--enable-comments` / `--disable-comments` 분기
+
+`--disable-comments`: `features.comments.enabled=false` 만 갱신 후 종료.
+
+`--enable-comments`:
+1. AskUserQuestion: "giscus 설정값이 있나요?"
+   - 없음 → 안내 출력 후 종료:
+     ```
+     1. https://giscus.app 방문
+     2. Repository 입력 (예: owner/blog)
+     3. Discussion category 선택 (Announcements 권장)
+     4. 페이지 하단의 data-* 4개 값(repo / repo-id / category / category-id)을 복사
+     5. /hams-diary --enable-comments 다시 실행해 입력
+     ```
+   - 있음 → AskUserQuestion 4번 (data-repo, data-repo-id, data-category, data-category-id)
+2. `features.comments` 객체에 저장:
+   ```json
+   { "enabled": true, "repo": "...", "repoId": "...",
+     "category": "...", "categoryId": "...",
+     "mapping": "pathname", "theme": "preferred_color_scheme" }
+   ```
+3. 저장 후 종료. 다음 배포부터 모든 포스트에 giscus 임베드.
+
 ### 일반 실행
 
 `~/.claude/hams-diary.json` Read:
 ```json
-{ "repo": "...", "template": "tech", "pagesUrl": "..." }
+{
+  "repo": "...",
+  "template": "tech",
+  "pagesUrl": "...",
+  "features": {
+    "search": false,
+    "comments": { "enabled": false }
+  }
+}
 ```
 
 파일 없으면 AskUserQuestion 으로 URL 입력받고 저장 → 계속.
@@ -260,6 +318,75 @@ posts.json 의 `sourcePath` 필드에도 경로를 기록 (`"sourcePath": "_src/
 
 ---
 
+## 5️⃣.5 기능 토글 적용 (검색·댓글)
+
+`features` 가 활성화되어 있으면 변수 치환 시 다음 자리표시자도 함께 채운다.
+
+### `{{SEARCH_BLOCK}}` (index.html 안)
+
+`features.search === true`:
+```html
+<div id="osd-search" class="osd-search"></div>
+<link rel="stylesheet" href="pagefind/pagefind-ui.css" />
+<script src="pagefind/pagefind-ui.js"></script>
+<script>
+  window.addEventListener('DOMContentLoaded', function () {
+    new PagefindUI({
+      element: '#osd-search',
+      showSubResults: true,
+      translations: { placeholder: '본문 검색…', clear_search: '지우기', no_results: '결과 없음' }
+    });
+  });
+</script>
+```
+
+`features.search === false`:
+```html
+<!-- search disabled -->
+```
+
+### `{{COMMENTS_BLOCK}}` (_post-frame.html 안, 본문 직후)
+
+`features.comments.enabled === true`:
+```html
+<section class="comments">
+  <h3>💬 토론</h3>
+  <script src="https://giscus.app/client.js"
+          data-repo="{{COMMENTS_REPO}}"
+          data-repo-id="{{COMMENTS_REPO_ID}}"
+          data-category="{{COMMENTS_CATEGORY}}"
+          data-category-id="{{COMMENTS_CATEGORY_ID}}"
+          data-mapping="pathname" data-strict="0"
+          data-reactions-enabled="1" data-emit-metadata="0"
+          data-input-position="bottom"
+          data-theme="preferred_color_scheme" data-lang="ko"
+          crossorigin="anonymous" async></script>
+</section>
+<script>
+  // 블로그 테마 토글 시 giscus iframe 도 동기화
+  (function(){
+    var orig = window.__osdSetTheme || function(){};
+    window.__osdSetTheme = function(t){
+      orig(t);
+      var iframe = document.querySelector('iframe.giscus-frame');
+      if (iframe) iframe.contentWindow.postMessage(
+        { giscus: { setConfig: { theme: t === 'dark' ? 'dark' : 'light' } } },
+        'https://giscus.app'
+      );
+    };
+  })();
+</script>
+```
+
+`features.comments.enabled === false`:
+```html
+<!-- comments disabled -->
+```
+
+각 템플릿의 기존 테마 토글 핸들러는 `if (window.__osdSetTheme) window.__osdSetTheme(next);` 한 줄을 추가해 giscus 동기화 hook 을 호출하도록 한다 (이 줄이 있으면 댓글 비활성 시에도 무해).
+
+---
+
 ## 6️⃣ 미리보기 서버 + 브라우저 오픈
 
 ```bash
@@ -301,7 +428,19 @@ AskUserQuestion 호출:
 
 ---
 
-## 8️⃣ (스킵)
+## 8️⃣.5 Pagefind 인덱스 생성 (검색 활성 시)
+
+`features.search === true` 인 경우, push 직전에 인덱스를 빌드해 같은 commit 에 포함시킨다.
+
+```bash
+if [ "$FEATURES_SEARCH" = "true" ]; then
+  cd "$WORKTREE_DIR"
+  npx -y pagefind --site . --output-path pagefind 2>&1 | tail -5
+  # 결과: ./pagefind/ 디렉토리 (UI css/js + 인덱스 조각들)
+fi
+```
+
+빌드 실패 시 ("Node.js 없음" 등) 사용자에게 안내하고 검색 없이 진행.
 
 ## 9️⃣ Commit + Push + PR + Merge
 

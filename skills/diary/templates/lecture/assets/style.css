@@ -45,3 +45,18 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); tran
 .lec-item__summary { font-size: 13px; color: var(--muted); }
 .lec-item__meta { font-size: 12px; color: var(--muted); }
 .footer { text-align: center; padding: 24px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); }
+
+/* Search (Pagefind) */
+.osd-search {
+  margin: 0 0 28px;
+  --pagefind-ui-primary: var(--accent);
+  --pagefind-ui-text: var(--text);
+  --pagefind-ui-background: var(--bg-card);
+  --pagefind-ui-border: var(--border);
+  --pagefind-ui-tag: var(--accent-soft);
+  --pagefind-ui-font: var(--sans);
+}
+
+/* Comments (giscus) */
+.comments { margin-top: 56px; padding-top: 28px; border-top: 1px solid var(--border); }
+.comments h3 { font-family: var(--serif); font-size: 22px; margin-bottom: 18px; }

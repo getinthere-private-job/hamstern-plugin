@@ -27,3 +27,17 @@ body { background: var(--bg); color: var(--text); font-family: var(--serif); lin
 .post-item__summary { color: var(--muted); font-size: 16px; }
 .post-item__category { font-family: var(--sans); font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); margin-top: 8px; display: inline-block; }
 .footer { text-align: center; padding: 32px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--border); font-family: var(--sans); }
+
+/* Search (Pagefind) */
+.osd-search {
+  margin: 0 0 28px;
+  --pagefind-ui-primary: var(--accent);
+  --pagefind-ui-text: var(--text);
+  --pagefind-ui-background: var(--bg);
+  --pagefind-ui-border: var(--border);
+  --pagefind-ui-font: var(--sans);
+}
+
+/* Comments (giscus) */
+.comments { margin-top: 48px; padding-top: 28px; border-top: 1px solid var(--border); font-family: var(--sans); }
+.comments h3 { font-size: 16px; margin-bottom: 18px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
