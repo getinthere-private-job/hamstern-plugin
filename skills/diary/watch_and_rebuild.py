@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-watch_and_rebuild.py — file watcher for /hams:diary --edit mode
+watch_and_rebuild.py — file watcher for /hams:diary edit mode
 
 Polls a single source file's mtime and re-runs the appropriate build step
 when it changes. Designed for the worktree-based edit flow where the user

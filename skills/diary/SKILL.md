@@ -7,7 +7,8 @@ description: |
   사용법:
     /hams:diary publish {file|dir|glob} [category]   # 게시 (단일/일괄 자동 감지)
     /hams:diary edit {slug}                           # 편집
-    /hams:diary config <subcommand>                   # 설정
+    /hams:diary config <subcommand>                   # 설정 (프로파일 포함)
+    /hams:diary option                                # 한 화면 사용법
 allowed-tools:
   - Bash
   - Read
@@ -33,7 +34,7 @@ allowed-tools:
 
 ## 사용 방법
 
-명령은 3개의 서브명령으로 통합되어 있다.
+명령은 4개의 서브명령으로 통합되어 있다 — `publish` · `edit` · `config` · `option`.
 
 ### `publish` — 글 올리기
 
@@ -48,11 +49,12 @@ allowed-tools:
 /hams:diary publish --rebuild all            # 로컬 원본 없이 사이트 글 재테마
 
 # 플래그
---no-theme         # HTML 어댑터 주입 끄기
---overwrite        # 기존 동일 글 덮어쓰기 (originalFilename → slug → 제목 매칭)
---draft            # 푸시 안 하고 워크트리만 남김
---preview-port N   # 미리보기 포트 (기본 8765)
---rebuild [slug|all|--category name]   # 사이트 기존 글 재테마/재시그니처
+--no-theme                              # HTML 어댑터 주입 끄기
+--overwrite                             # 기존 동일 글 덮어쓰기 (originalFilename → slug → 제목 매칭)
+--draft                                 # 푸시 안 하고 워크트리만 남김
+--preview-port N                        # 미리보기 포트 (기본 8765)
+--rebuild [slug|all|--category name]    # 사이트 기존 글 재테마/재시그니처
+--profile {name}                        # 1회 임시 프로파일 override (active 변경 안 함)
 ```
 
 `category` 가 비어있으면 AskUserQuestion 으로 선택받는다.
@@ -60,7 +62,7 @@ allowed-tools:
 ### `edit` — 글 고치기
 
 ```bash
-/hams:diary edit {slug}
+/hams:diary edit {slug} [--profile {name}]
 # → 에디터에서 _src/{slug}.{ext} 자동 오픈
 # → 미리보기 서버 + 브라우저 자동 표시
 # → 저장하면 watcher 가 자동 재빌드
@@ -70,129 +72,218 @@ allowed-tools:
 ### `config` — 설정 한 곳
 
 ```bash
-/hams:diary config show                       # 현재 설정 표시
-/hams:diary config repo {github-url}          # 타겟 레포 (1회 필수)
-/hams:diary config template {1-5|name}        # 사이트 디자인 변경
-/hams:diary config search {on|off}            # Pagefind 풀텍스트 검색
-/hams:diary config comments {on|off}          # giscus 댓글 (on 은 대화형)
-/hams:diary config blog-title "{title}"       # 블로그 제목 변경
+# 활성 프로파일 갱신
+/hams:diary config show                       # 활성 + 모든 프로파일 표시
+/hams:diary config repo {github-url}          # 활성 프로파일의 타겟 레포
+/hams:diary config template {1-5|name}        # 활성 프로파일 사이트 디자인
+/hams:diary config search {on|off}            # 활성 프로파일 Pagefind 검색
+/hams:diary config comments {on|off}          # 활성 프로파일 giscus 댓글 (on은 대화형)
+/hams:diary config blog-title "{title}"       # 활성 프로파일 블로그 제목
+
+# 프로파일 관리 (멀티 블로그 운영용)
+/hams:diary config profile list                       # 등록된 프로파일 목록 + 활성 표시
+/hams:diary config profile add {name} {repo-url}      # 신규 프로파일 등록
+/hams:diary config profile use {name}                 # 활성 프로파일 전환
+/hams:diary config profile remove {name}              # 프로파일 삭제
 ```
 
----
+> 다른 톤의 블로그(예: 기술 / 일상 / 강의)는 **별도 프로파일 = 별도 레포**로 운영. 한 사이트 안에 카테고리별 다른 템플릿은 비권장 (시각 일관성·SEO 이유).
 
-## 하위호환 (구 명령어)
+### `option` — 사용법 한눈에
 
-이전 플래그 형태도 그대로 인식되어 동등한 신 명령으로 라우팅된다 — 점진적 전환을 위함.
-
-| 구 명령 | 신 명령 |
-|---|---|
-| `/hams:diary {file} [cat]` (서브명령 없음) | `/hams:diary publish {file} [cat]` |
-| `/hams:diary --edit {slug}` | `/hams:diary edit {slug}` |
-| `/hams:diary --set-repo {url}` | `/hams:diary config repo {url}` |
-| `/hams:diary --set-template {n}` | `/hams:diary config template {n}` |
-| `/hams:diary --enable-search` / `--disable-search` | `/hams:diary config search {on\|off}` |
-| `/hams:diary --enable-comments` / `--disable-comments` | `/hams:diary config comments {on\|off}` |
-| `/hams:diary --rebuild-remote ...` | `/hams:diary publish --rebuild ...` |
-
-내부 동작은 동일하므로 기존 워크플로우는 그대로 작동한다. README/문서는 신 명령 기준으로 작성한다.
-
-# 기능 토글 (opt-in)
-/hams:diary --enable-search                     # Pagefind 풀텍스트 검색 켜기
-/hams:diary --disable-search                    # 검색 끄기
-/hams:diary --enable-comments                   # giscus 댓글 켜기 (대화형)
-/hams:diary --disable-comments                  # 댓글 끄기
+```bash
+/hams:diary option   # 서브명령·플래그·템플릿·예시·현재 설정을 한 번에 표시 (read-only)
 ```
+
+`option` 은 어떤 외부 동작(git/clone/server/AskUserQuestion/파일 갱신)도 발생시키지 않는다. 사용법을 빠르게 훑고 싶을 때 호출. 출력 양식은 0-4 참조.
 
 ---
 
 ## 0️⃣ 인자 해석 & 설정 확인
 
-### `--set-repo {url}` 분기
+### 0-1. 설정 파일 스키마 + 자동 마이그레이션
 
-```bash
-python3 -c "import json; d={'repo':'<URL>','template':'tech'}; \
-  json.dump(d, open('$HOME/.claude/hams-diary.json','w'))"
-```
-저장 후 종료. URL 파싱은 기존과 동일 (`https://github.com/owner/repo.git` → owner/repo).
+**파일 위치**: `~/.claude/hams-diary.json`
 
-### `--set-template {value}` 분기
+**현재 스키마** (멀티-프로파일):
 
-```bash
-# 1-5 숫자 또는 이름(minimal/tech/lecture/notebook/magazine) 입력 허용
-TEMPLATES = ['minimal','tech','lecture','notebook','magazine']
-# 사용자 입력 검증 → ~/.claude/hams-diary.json 의 template 필드만 업데이트
-```
-
-저장 후 종료.
-
-### `--enable-search` / `--disable-search` 분기
-
-```bash
-# 1) Node.js 가용성 체크 (활성화 시에만)
-if ! command -v npx >/dev/null 2>&1; then
-  echo "❌ Node.js 18+ 가 필요합니다. https://nodejs.org 에서 설치 후 재시도하세요."
-  exit 1
-fi
-npx -y pagefind --version 2>/dev/null   # 사전 다운로드(첫 실행만 시간 걸림)
-
-# 2) features.search 토글
-python3 -c "import json; p='$HOME/.claude/hams-diary.json'; \
-  d=json.load(open(p)); d.setdefault('features',{}); \
-  d['features']['search']=$ENABLE; json.dump(d, open(p,'w'))"
-```
-
-저장 후 종료. `$ENABLE` 은 enable=true / disable=false.
-
-### `--enable-comments` / `--disable-comments` 분기
-
-`--disable-comments`: `features.comments.enabled=false` 만 갱신 후 종료.
-
-`--enable-comments`:
-1. AskUserQuestion: "giscus 설정값이 있나요?"
-   - 없음 → 안내 출력 후 종료:
-     ```
-     1. https://giscus.app 방문
-     2. Repository 입력 (예: owner/blog)
-     3. Discussion category 선택 (Announcements 권장)
-     4. 페이지 하단의 data-* 4개 값(repo / repo-id / category / category-id)을 복사
-     5. /hams:diary --enable-comments 다시 실행해 입력
-     ```
-   - 있음 → AskUserQuestion 4번 (data-repo, data-repo-id, data-category, data-category-id)
-2. `features.comments` 객체에 저장:
-   ```json
-   { "enabled": true, "repo": "...", "repoId": "...",
-     "category": "...", "categoryId": "...",
-     "mapping": "pathname", "theme": "preferred_color_scheme" }
-   ```
-3. 저장 후 종료. 다음 배포부터 모든 포스트에 giscus 임베드.
-
-### 일반 실행
-
-`~/.claude/hams-diary.json` Read:
 ```json
 {
-  "repo": "...",
-  "template": "tech",
-  "pagesUrl": "...",
-  "features": {
-    "search": false,
-    "comments": { "enabled": false }
+  "active": "default",
+  "profiles": {
+    "default": {
+      "repo": "https://github.com/me/blog.git",
+      "template": "tech",
+      "blogTitle": "기술 노트",
+      "pagesUrl": "https://...",
+      "features": { "search": false, "comments": { "enabled": false } }
+    }
   }
 }
 ```
 
-파일 없으면 AskUserQuestion 으로 URL 입력받고 저장 → 계속.
-`template` 필드 없으면 첫 배포 시 AskUserQuestion 으로 5개 중 선택받고 저장.
+**자동 마이그레이션** — 어떤 서브명령이든 첫 호출 시 다음 검사:
 
-추출 변수:
+```python
+import json, shutil, os
+p = os.path.expanduser('~/.claude/hams-diary.json')
+if os.path.exists(p):
+    cfg = json.load(open(p, encoding='utf-8'))
+    # flat schema {repo, template, ...} → multi-profile
+    if 'profiles' not in cfg and ('repo' in cfg or 'template' in cfg):
+        shutil.copy(p, p + '.bak')   # 안전 백업
+        cfg = {"active": "default", "profiles": {"default": cfg}}
+        json.dump(cfg, open(p, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
+    cfg.setdefault('active', 'default')
+    cfg.setdefault('profiles', {})
+```
+
+**파일이 없는 경우** (publish/edit/config 호출 시): AskUserQuestion으로 첫 프로파일 repo URL 받아 다음으로 초기화:
+
+```json
+{ "active": "default", "profiles": { "default": { "repo": "<URL>", "template": "tech" } } }
+```
+
+`option` 호출 시에는 파일 없어도 안내만 출력 (초기화 안 함).
+
+### 0-2. 서브명령 라우팅
+
+인자 1번째 토큰으로 분기:
+
+| 토큰 | 분기 |
+|---|---|
+| `publish` | publish 흐름 (1️⃣~🔟) |
+| `edit {slug}` | edit 모드 |
+| `config <sub>` | 0-3 |
+| `option` | 0-4 (read-only) |
+| 그 외 | "알 수 없는 명령. `/hams:diary option` 으로 사용법을 확인하세요" 안내 후 종료 |
+
+> 옛 표기(`--set-repo`, `--set-template`, `--enable-*`, `--disable-*`, `--edit`, `--rebuild-remote`, 서브명령 없는 단독 파일 인자)는 모두 **폐기됐다**. 받으면 위 "알 수 없는 명령" 분기로 안내 후 종료.
+
+### 0-3. `config` 서브명령 분기
+
+마이그레이션 후 `cfg['profiles'][cfg['active']]` 를 **P** (활성 프로파일) 라고 한다.
+
+| 명령 | 동작 |
+|---|---|
+| `config show` | `cfg` 전체 + 활성 프로파일 강조해서 보기 좋게 출력 |
+| `config repo {url}` | `P['repo'] = url` 갱신 |
+| `config template {1-5\|name}` | `TEMPLATES = ['minimal','tech','lecture','notebook','magazine']`. 숫자/이름 검증 후 `P['template']` 갱신 |
+| `config search on\|off` | on이면 Node.js (`npx`) 가용성 체크 + `npx -y pagefind --version` 사전 다운로드 → `P['features']['search'] = on/off` |
+| `config comments on\|off` | off는 `P['features']['comments']['enabled']=false`. on은 AskUserQuestion으로 giscus 4개 data-* 값 받아 `P['features']['comments']` 채움. 데이터 없으면 giscus.app 안내 후 종료 |
+| `config blog-title "{title}"` | `P['blogTitle'] = title` |
+| `config profile list` | `cfg['profiles']` 키 목록 + `cfg['active']` 표시 |
+| `config profile add {name} {url}` | 이름 충돌 검사 → `cfg['profiles'][name] = {'repo': url, 'template': 'tech'}` 등록 |
+| `config profile use {name}` | 존재 검증 → `cfg['active'] = name` |
+| `config profile remove {name}` | 활성이면 다른 프로파일로 자동 전환. 마지막 1개면 거부 |
+
+모든 갱신은 `json.dump(cfg, open(p, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)` 로 저장 후 종료. publish/edit는 트리거되지 않는다.
+
+`config comments on` 시 데이터 없을 때 안내문:
+```
+1. https://giscus.app 방문
+2. Repository 입력 (예: owner/blog)
+3. Discussion category 선택 (Announcements 권장)
+4. 페이지 하단의 data-* 4개 값(repo / repo-id / category / category-id) 복사
+5. /hams:diary config comments on 다시 실행해 입력
+```
+
+### 0-4. `option` 서브명령 (read-only)
+
+어떤 외부 동작(git/clone/server/AskUserQuestion/파일 갱신)도 발생시키지 않고 다음을 출력하고 종료:
+
+```
+🐹 /hams:diary — 로컬 마크다운/HTML → GitHub Pages 개인 블로그
+
+📌 서브명령
+  publish {file|dir|glob} [category] [--플래그…]      # 게시 (단일/일괄 자동 감지)
+  edit {slug} [--profile {name}]                       # 기존 글 편집 (라이브 미리보기)
+  config <sub>                                          # 설정 (아래)
+  option                                                # 이 사용법 표시 (read-only)
+
+🚩 publish 플래그
+  --no-theme                           # HTML 어댑터 주입 끄기
+  --overwrite                          # 같은 글 발견 시 기존 slug에 덮어쓰기 (URL 보존)
+  --draft                              # 푸시 안 하고 워크트리만 남김
+  --preview-port N                     # 미리보기 포트 (기본 8765)
+  --rebuild [slug|all|--category X]    # 사이트 기존 글 재테마
+  --profile {name}                     # 1회 임시 프로파일 override (active 변경 안 함)
+
+🔧 config 서브명령 (활성 프로파일 갱신)
+  show                                 # 활성 + 모든 프로파일 표시
+  repo {github-url}                    # 활성 프로파일의 타겟 레포
+  template {1-5|minimal|tech|lecture|notebook|magazine}
+  search {on|off}                      # Pagefind 풀텍스트 검색
+  comments {on|off}                    # giscus 댓글 (on은 대화형, 4개 data-* 값 입력)
+  blog-title "{제목}"
+
+👥 프로파일 관리 (멀티 블로그 운영용)
+  config profile list                              # 전체 목록 + 활성 표시
+  config profile add {name} {repo-url}             # 신규 프로파일 등록
+  config profile use {name}                        # 활성 전환
+  config profile remove {name}                     # 삭제 (마지막 1개는 거부)
+
+🎨 5가지 템플릿
+  minimal   — 흰 배경 · 세리프 · 단일 컬럼 (텍스트 노트, 에세이)
+  tech      — 다크 히어로 · 그라데이션 카드 · 카테고리 필터 (시뮬레이터·도구)
+  lecture   — 주차/회차 번호 · 사이드 목차 (강의 시리즈)
+  notebook  — Jupyter풍 좌측 TOC · monospace 헤딩 (튜토리얼)
+  magazine  — 큰 히어로 · 에디토리얼 그리드 · 세리프 (포트폴리오)
+
+💡 예시
+  /hams:diary publish ./hello.md 일상
+  /hams:diary publish ./drafts/ 일상 --overwrite
+  /hams:diary publish ./사이트.html 기술 --no-theme
+  /hams:diary publish ./post.md 일상 --profile diary       # 1회 임시 override
+  /hams:diary edit hello-world
+  /hams:diary edit hello-world --profile diary
+  /hams:diary config profile add tech https://github.com/me/tech-blog.git
+  /hams:diary config profile use tech
+  /hams:diary config search on
+
+📂 현재 설정 (~/.claude/hams-diary.json)
+  active: <cfg.active>
+  profiles: <N>개
+  - <name>  →  <repo>  (<template>)
+  - ...
+
+  활성 프로파일 <active> 상세
+    repo:        <P.repo>
+    template:    <P.template>
+    blogTitle:   <P.blogTitle 또는 (미설정)>
+    search:      <on|off>
+    comments:    <on|off>
+
+💾 옛 flat 형태({repo, template, ...})는 첫 호출 시 자동으로 default 프로파일로 변환되며 ~/.claude/hams-diary.json.bak 에 백업됩니다.
+
+⚠️  옛 표기(--set-repo / --set-template / --enable-* / --disable-* / --edit / --rebuild-remote / 서브명령 없는 단독 파일 인자)는 모두 폐기됐습니다.
+
+📖 더 자세한 spec: skills/diary/SKILL.md
+```
+
+설정 파일이 아예 없으면 "📂 현재 설정" 섹션은 "(아직 없음 — `/hams:diary config profile add default <url>` 로 시작)"으로 대체.
+
+### 0-5. 일반 실행 (publish/edit) — 활성 프로파일 추출
+
+`publish` 또는 `edit` 로 라우팅된 경우:
+
+1. 인자에서 `--profile {name}` 추출 → 있으면 그 이름, 없으면 `cfg['active']`
+2. `cfg['profiles'][name]` 존재 여부 검증 (없으면 에러 종료: "프로파일 없음. `/hams:diary config profile list` 로 확인")
+3. 활성 프로파일 P에서 다음 변수 추출:
+
 | 변수 | 값 |
 |---|---|
-| `REPO_URL` | `repo` 필드 |
+| `PROFILE_NAME` | 사용 중인 프로파일 이름 |
+| `REPO_URL` | `P['repo']` |
 | `REPO_OWNER`, `REPO_NAME` | URL 파싱 |
-| `PAGES_URL` | `pagesUrl` 필드 또는 `https://${OWNER}.github.io/${NAME}/` |
-| `TEMPLATE` | `template` 필드 (기본 `tech`) |
-| `LOCAL_DIR` | `/tmp/${REPO_NAME}` |
-| `WORKTREE_DIR` | `/tmp/${REPO_NAME}-preview-${TS}` (배포마다 새로 생성) |
+| `PAGES_URL` | `P['pagesUrl']` 또는 `https://${OWNER}.github.io/${NAME}/` |
+| `TEMPLATE` | `P['template']` (기본 `tech`) |
+| `BLOG_TITLE` | `P['blogTitle']` (없으면 첫 배포 시 AskUserQuestion으로 받아 P에 저장) |
+| `FEATURES` | `P['features']` (없으면 `{search: false, comments: {enabled: false}}`) |
+| `LOCAL_DIR` | `/tmp/${REPO_NAME}-${PROFILE_NAME}` (프로파일별 분리) |
+| `WORKTREE_DIR` | `/tmp/${REPO_NAME}-${PROFILE_NAME}-preview-${TS}` |
+
+`P['template']` 필드 없으면 첫 배포 시 AskUserQuestion으로 5개 중 선택받고 P에 저장.
 
 ---
 
@@ -358,7 +449,7 @@ python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
 
 ### 원본 소스 보존 (`_src/`) + originalFilename 기록
 
-배포 시 원본 파일을 워크트리의 `_src/{slug}.{ext}` 로도 복사한다. 나중에 `--edit {slug}` 또는 `--rebuild-remote` 시 이 원본을 사용한다.
+배포 시 원본 파일을 워크트리의 `_src/{slug}.{ext}` 로도 복사한다. 나중에 `edit {slug}` 또는 `publish --rebuild` 시 이 원본을 사용한다.
 
 ```bash
 mkdir -p _src
@@ -567,18 +658,18 @@ git worktree remove --force "$WORKTREE_DIR"
 
 ---
 
-## ✏️ 편집 모드 (`--edit {slug}`)
+## ✏️ 편집 모드 (`edit`)
 
 기존 게시글의 내용·제목·태그를 고치는 가장 빠른 방법. 워크트리·미리보기·자동 재빌드·승인 게이트가 한 번에 묶여 있어 "오타 1개 고치고 게시" 가 30초 안에 끝난다.
 
 ### 흐름
 
 ```
-[1] /hams:diary --edit msa-k8s-websocket
+[1] /hams:diary edit msa-k8s-websocket
 [2] 레포 clone/pull → 워크트리 생성
 [3] posts.json 에서 slug 검색 → sourcePath 확인
     sourcePath 없음 → "이 포스트는 _src/ 백업이 없습니다.
-                       원본 파일을 다시 /hams:diary {file} --overwrite 로
+                       원본 파일을 다시 /hams:diary publish {file} --overwrite 로
                        배포해 주세요." 안내 후 종료
 [4] 기본 에디터로 _src/{slug}.{ext} 열기
 [5] python -m http.server $PORT 백그라운드 실행
@@ -599,7 +690,7 @@ git worktree remove --force "$WORKTREE_DIR"
 
 `/hams:diary` v1 시절(즉, `_src/` 백업 도입 이전)에 게시된 포스트는 `posts/{slug}.html` 의 빌드 결과만 레포에 있다. 처리 경로:
 
-- **HTML 시뮬레이터**: `--rebuild-remote {slug}` 가 자동으로 `extract_original_html.py` 를 돌려 어댑터 마커 사이 블록을 제거 → 원본 복원 → `_src/` 에 저장 → 어댑터 재주입. 손에 원본 파일 없어도 됨.
+- **HTML 시뮬레이터**: `publish --rebuild {slug}` 가 자동으로 `extract_original_html.py` 를 돌려 어댑터 마커 사이 블록을 제거 → 원본 복원 → `_src/` 에 저장 → 어댑터 재주입. 손에 원본 파일 없어도 됨.
 - **MD 였던 포스트**: 역변환 비신뢰 (HTML→MD 손실). 원본 `.md` 가 손에 있다면 `--overwrite` 로 재배포해 `_src/` 백업 생성. 없으면 skip + 경고.
 
 가장 안전한 길: 첫 게시 후엔 원본을 로컬에서 보관하지 말고, 항상 `_src/` 를 진실의 원본으로 사용한다.
@@ -629,16 +720,16 @@ WATCHER_PID=$!
 
 ---
 
-## 🔄 재빌드 모드 (`--rebuild-remote`)
+## 🔄 재빌드 모드 (`publish --rebuild`)
 
 **언제 쓰나** — 어댑터 로직이 바뀌었거나 새로운 시그니처/테마/기능 토글을 기존 모든 글에 일괄 적용하고 싶을 때. 로컬에 원본 파일이 있을 필요가 없다 (레포의 `_src/` 또는 `posts/{slug}.html` 역추출이 소스가 됨).
 
 ### 호출 형태
 
 ```bash
-/hams:diary --rebuild-remote msa-k8s-websocket          # 단일
-/hams:diary --rebuild-remote all                        # 전체
-/hams:diary --rebuild-remote --category msa             # 카테고리
+/hams:diary publish --rebuild msa-k8s-websocket          # 단일
+/hams:diary publish --rebuild all                        # 전체
+/hams:diary publish --rebuild --category msa             # 카테고리
 ```
 
 ### 흐름
@@ -720,20 +811,38 @@ python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
 
 ## 내부 구현 체크리스트 (Claude 가 따를 순서)
 
-- [ ] **인자 파싱** — `--set-repo`, `--set-template`, `--edit`, `--rebuild-remote`, `--no-theme`, `--overwrite`, `--draft`, `--preview-port`, 위치 인자(파일/디렉토리/글롭, 카테고리)
-- [ ] `--set-repo` 분기 — JSON 저장 후 종료
-- [ ] `--set-template` 분기 — JSON 갱신 후 종료
-- [ ] `--edit {slug}` 분기 — 편집 모드 흐름(아래 별도 섹션)으로 진입
-- [ ] `--rebuild-remote {slug|all|--category X}` 분기 — 재빌드 모드 흐름(아래 별도 섹션)으로 진입
-- [ ] `~/.claude/hams-diary.json` Read (없으면 AskUserQuestion)
-- [ ] REPO_URL, OWNER, NAME, PAGES_URL, TEMPLATE, LOCAL_DIR, WORKTREE_DIR, BASE_BRANCH 결정
+### 공통 (모든 서브명령 진입 시)
+
+- [ ] **인자 토큰 분류** — `publish` / `edit` / `config <sub>` / `option` / 그 외
+- [ ] **설정 자동 마이그레이션** — `~/.claude/hams-diary.json` Read → flat schema(`{repo, template, ...}`)면 `.bak` 백업 후 `{active, profiles}` 로 변환 (0-1 로직)
+- [ ] 그 외 토큰이면 "알 수 없는 명령. `/hams:diary option` 으로 사용법을 확인하세요" 출력 후 종료
+
+### `option` 분기
+
+- [ ] 0-4의 출력 양식 그대로 출력. 어떤 외부 동작도 안 함. 종료.
+
+### `config` 분기
+
+- [ ] `cfg['profiles'][cfg['active']]` 를 P로 가져옴 (없으면 P = {})
+- [ ] 0-3 표대로 처리:
+  - `show` → cfg 보기 좋게 출력
+  - `repo` / `template` / `search` / `comments` / `blog-title` → P 갱신
+  - `profile list` / `profile add` / `profile use` / `profile remove` → cfg 직접 갱신
+- [ ] `json.dump(cfg, p, ensure_ascii=False, indent=2)` 저장
+- [ ] 종료 (publish/edit 안 트리거)
+
+### `publish` 분기
+
+- [ ] 인자에서 `--profile {name}` 추출 → 없으면 `cfg['active']`
+- [ ] `cfg['profiles'][name]` 검증 (없으면 에러 종료: "프로파일 없음. /hams:diary config profile list 로 확인")
+- [ ] 활성 프로파일에서 PROFILE_NAME, REPO_URL, OWNER, NAME, PAGES_URL, TEMPLATE, BLOG_TITLE, FEATURES, LOCAL_DIR, WORKTREE_DIR 결정 (0-5)
 - [ ] **JOBS 배열 구성** — 단일/디렉토리/글롭 분기, 한글 파일명 PowerShell 폴백
 - [ ] 각 job 메타 추출 (title/summary/tags/slug/category, **originalFilename**)
 - [ ] category 미결정시 AskUserQuestion
 - [ ] LOCAL_DIR clone/pull
-- [ ] WORKTREE_DIR worktree add
+- [ ] WORKTREE_DIR worktree add (`BR=post-preview-${TS}`)
 - [ ] 첫 배포 판단 (index.html 부재 또는 .diary-meta.json template 다름) → 템플릿 복사 + {{BLOG_*}} 치환 + .nojekyll
-- [ ] BLOG_TITLE 등 미설정시 AskUserQuestion
+- [ ] BLOG_TITLE 등 미설정시 AskUserQuestion → P에 저장
 - [ ] posts.json 로드 (없으면 빈 구조)
 - [ ] **각 job: 3단계 매칭** (originalFilename → slug → 제목 유사도 ≥0.85+같은 engine), 매칭 발견 시 기존 slug 재사용. `--overwrite` 미설정이면 skip, 설정이면 in-place 교체. 매칭 없음이면 신규 삽입.
 - [ ] posts.json 워크트리에 Write
@@ -745,17 +854,36 @@ python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
 - [ ] **브라우저 자동 오픈** — OS별 분기 (start/open/xdg-open)
 - [ ] **AskUserQuestion 승인 게이트** — ✅게시 / ✏️수정 / ❌취소
 - [ ] 사용자 응답 처리:
-  - ✅: 9단계 (commit/push/PR/merge)
+  - ✅: commit + push + PR (gh 없으면 직접 push) + merge → 워크트리 정리
   - ✏️: 사용자 피드백 받아 재빌드 또는 워크트리 그대로 두고 안내 후 종료
   - ❌: kill server, worktree remove, branch delete, 종료
-- [ ] (✅ 케이스) commit + push + PR (gh 없으면 직접 push) + merge
-- [ ] (✅ 케이스) 워크트리/브랜치 정리
 - [ ] **결과 출력** — 성공한 포스트 목록, skip된 항목, 블로그 URL, 반영 예상 시간
-- [ ] (--draft 케이스) push 건너뛰고 워크트리 보존, 위치 안내
+- [ ] (`--draft` 케이스) push 건너뛰고 워크트리 보존, 위치 안내
 
-### `--edit {slug}` 모드 체크리스트
+### `publish --rebuild` 분기 (재빌드 모드)
 
-- [ ] 설정 Read + REPO clone/pull (위와 동일)
+- [ ] 활성/`--profile` 프로파일 결정 (위와 동일)
+- [ ] 워크트리 생성 (`BR=rebuild-${TS}`)
+- [ ] posts.json 로드 → 대상 entries 결정 (slug / all / `--category X`)
+  - 빈 결과 → "대상 없음" 안내 후 종료
+- [ ] `all` 모드면 AskUserQuestion 으로 "총 N개 재빌드합니다. 계속?" 확인
+- [ ] 첫 배포 판단 → 템플릿 다시 입힘
+- [ ] **각 entry 처리**:
+  - SOURCE 결정: (a) `_src/{slug}.{ext}` → (b) html+없음→`extract_original_html.py` → (c) md+없음→skip+경고
+  - 빌더 호출: md→마크다운 변환+`_post-frame.html` 치환 / html→`inject_html_adapter.py`
+  - `originalFilename` 비어있으면 entry 의 `filename`/`title` 으로 추정해 채우기 (마이그레이션)
+  - posts.json 의 `themeInjected`/`sourcePath` 갱신
+- [ ] posts.json Write
+- [ ] 미리보기 서버 시작 + 첫 3개 URL 안내
+- [ ] **AskUserQuestion 승인 게이트** — ✅게시 / ✏️수정 / ❌취소
+- [ ] ✅: `git diff --quiet` 인 entry 는 자동 제외 → commit (메시지: "rebuild: re-apply adapter to N posts") + push + PR + merge → 워크트리 정리
+- [ ] ✏️: 워크트리 두고 안내 후 종료
+- [ ] ❌: 서버 종료 → 워크트리·브랜치 삭제
+
+### `edit` 분기
+
+- [ ] 활성/`--profile` 프로파일 결정
+- [ ] 설정 Read + REPO clone/pull
 - [ ] 워크트리 생성 (`BR=edit-${slug}-${TS}`)
 - [ ] posts.json 에서 `id == slug` 검색 → entry 추출
   - 없음 → "slug 일치 없음" 안내 후 종료
@@ -769,31 +897,11 @@ python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
 - [ ] ✅: watcher·서버 종료 → commit + push + PR + merge → 워크트리 정리
 - [ ] ❌: watcher·서버 종료 → 워크트리·브랜치 삭제 → push 0회로 종료
 
-### `--rebuild-remote` 모드 체크리스트
-
-- [ ] 설정 Read + REPO clone/pull (위와 동일)
-- [ ] 워크트리 생성 (`BR=rebuild-${TS}`)
-- [ ] posts.json 로드 → 대상 entries 결정 (slug / all / --category)
-  - 빈 결과 → "대상 없음" 안내 후 종료
-- [ ] `all` 모드면 AskUserQuestion 으로 "총 N개 재빌드합니다. 계속?" 확인
-- [ ] 첫 배포 판단 (index.html 부재 / 템플릿 변경) → 템플릿 다시 입힘
-- [ ] **각 entry 처리**:
-  - SOURCE 결정: (a) `_src/{slug}.{ext}` → (b) html+없음→`extract_original_html.py` → (c) md+없음→skip+경고
-  - 빌더 호출: md→마크다운 변환+`_post-frame.html` 치환 / html→`inject_html_adapter.py`
-  - `originalFilename` 비어있으면 entry 의 `filename`/`title` 으로 추정해 채우기 (마이그레이션)
-  - posts.json 의 `themeInjected`/`sourcePath` 갱신
-- [ ] posts.json Write
-- [ ] 미리보기 서버 시작 + 첫 3개 URL 안내
-- [ ] **AskUserQuestion 승인 게이트** — ✅게시 / ✏️수정 / ❌취소
-- [ ] ✅: `git diff --quiet` 인 entry 는 자동 제외 → commit (메시지: "rebuild: re-apply adapter to N posts") + push + PR + merge → 워크트리 정리
-- [ ] ✏️: 워크트리 두고 안내 후 종료
-- [ ] ❌: 서버 종료 → 워크트리·브랜치 삭제
-
 ---
 
 ## 참고
 
-- 설정: `~/.claude/hams-diary.json` (`{repo, template, pagesUrl?, features?}`)
+- 설정: `~/.claude/hams-diary.json` — 스키마 `{active, profiles: {<name>: {repo, template, blogTitle?, pagesUrl?, features?}}}`. 옛 flat 형태(`{repo, template, ...}`)는 첫 호출 시 `default` 프로파일로 자동 마이그레이션 (`.bak` 백업 후).
 - 템플릿: `${PLUGIN_ROOT}/skills/diary/templates/{minimal|tech|lecture|notebook|magazine}/`
 - HTML 어댑터 빌더: `${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py`
 - HTML 어댑터 역추출: `${PLUGIN_ROOT}/skills/diary/extract_original_html.py` (재빌드 모드 fallback)
