@@ -111,7 +111,7 @@ allowed-tools:
 
 ```bash
 python3 -c "import json; d={'repo':'<URL>','template':'tech'}; \
-  json.dump(d, open('$HOME/.claude/hams:diary.json','w'))"
+  json.dump(d, open('$HOME/.claude/hams-diary.json','w'))"
 ```
 저장 후 종료. URL 파싱은 기존과 동일 (`https://github.com/owner/repo.git` → owner/repo).
 
@@ -120,7 +120,7 @@ python3 -c "import json; d={'repo':'<URL>','template':'tech'}; \
 ```bash
 # 1-5 숫자 또는 이름(minimal/tech/lecture/notebook/magazine) 입력 허용
 TEMPLATES = ['minimal','tech','lecture','notebook','magazine']
-# 사용자 입력 검증 → ~/.claude/hams:diary.json 의 template 필드만 업데이트
+# 사용자 입력 검증 → ~/.claude/hams-diary.json 의 template 필드만 업데이트
 ```
 
 저장 후 종료.
@@ -136,7 +136,7 @@ fi
 npx -y pagefind --version 2>/dev/null   # 사전 다운로드(첫 실행만 시간 걸림)
 
 # 2) features.search 토글
-python3 -c "import json; p='$HOME/.claude/hams:diary.json'; \
+python3 -c "import json; p='$HOME/.claude/hams-diary.json'; \
   d=json.load(open(p)); d.setdefault('features',{}); \
   d['features']['search']=$ENABLE; json.dump(d, open(p,'w'))"
 ```
@@ -168,7 +168,7 @@ python3 -c "import json; p='$HOME/.claude/hams:diary.json'; \
 
 ### 일반 실행
 
-`~/.claude/hams:diary.json` Read:
+`~/.claude/hams-diary.json` Read:
 ```json
 {
   "repo": "...",
@@ -725,7 +725,7 @@ python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
 - [ ] `--set-template` 분기 — JSON 갱신 후 종료
 - [ ] `--edit {slug}` 분기 — 편집 모드 흐름(아래 별도 섹션)으로 진입
 - [ ] `--rebuild-remote {slug|all|--category X}` 분기 — 재빌드 모드 흐름(아래 별도 섹션)으로 진입
-- [ ] `~/.claude/hams:diary.json` Read (없으면 AskUserQuestion)
+- [ ] `~/.claude/hams-diary.json` Read (없으면 AskUserQuestion)
 - [ ] REPO_URL, OWNER, NAME, PAGES_URL, TEMPLATE, LOCAL_DIR, WORKTREE_DIR, BASE_BRANCH 결정
 - [ ] **JOBS 배열 구성** — 단일/디렉토리/글롭 분기, 한글 파일명 PowerShell 폴백
 - [ ] 각 job 메타 추출 (title/summary/tags/slug/category, **originalFilename**)
@@ -793,7 +793,7 @@ python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
 
 ## 참고
 
-- 설정: `~/.claude/hams:diary.json` (`{repo, template, pagesUrl?, features?}`)
+- 설정: `~/.claude/hams-diary.json` (`{repo, template, pagesUrl?, features?}`)
 - 템플릿: `${PLUGIN_ROOT}/skills/diary/templates/{minimal|tech|lecture|notebook|magazine}/`
 - HTML 어댑터 빌더: `${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py`
 - HTML 어댑터 역추출: `${PLUGIN_ROOT}/skills/diary/extract_original_html.py` (재빌드 모드 fallback)
