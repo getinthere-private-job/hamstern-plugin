@@ -64,47 +64,66 @@ Anthropic이 왜 이 기능을 안 만들었나 — 부정적 시각:
 
 ---
 
-# /hams-diary
+# /hams-diary — 로컬 마크다운으로 운영하는 개인 블로그
 
-로컬 마크다운(`.md`) 또는 인터랙티브 HTML 시뮬레이터(`.html`)를 GitHub Pages 블로그에 배포한다. 푸시 전에 로컬 미리보기 서버를 띄워 브라우저로 검수하고 사용자가 승인한 후에만 commit·push·merge 한다. **강의자료 일괄 배포에 최적화**.
+`로컬에서 마크다운으로 글을 쓰고`, 명령 하나로 **GitHub Pages 개인 블로그**에 정리·게시하는 도구. 강사·연구자·개발자가 자기 글을 한 곳에 모아 운영하기 좋다.
+
+> 핵심 가치: **글은 로컬 `.md` 파일에 살아있고, 블로그는 그 출력물**. 자기 글을 자기 컴퓨터에서 통제하면서 GitHub Pages 의 무료 호스팅·CDN·이력 관리만 빌려 쓴다.
 
 ## Quick start (3 step)
 
 ```bash
 # 1. 타겟 레포 한 번만 설정
-/hams-diary --set-repo https://github.com/myuser/my-blog.git
+/hams-diary config repo https://github.com/myuser/my-blog.git
 
-# 2. 첫 배포 — 디자인 템플릿(5개 중 선택) + 블로그 제목/소개를 묻고 빌드
-/hams-diary ./lecture-week1.md 강의
+# 2. 첫 글 게시 — 디자인 템플릿 + 블로그 제목을 묻고 빌드
+/hams-diary publish ./hello-world.md 일상
 
 # 3. 브라우저가 자동으로 http://localhost:8765 를 열어준다
-#    → ✅ 게시 / ✏️ 수정 / ❌ 취소 중 선택
+#    → ✅ 게시 / ✏️ 수정 / ❌ 취소
 ```
 
-## 명령어
+## 3가지 명령
 
-| 명령 | 동작 |
-|------|------|
-| `/hams-diary --set-repo {url}` | 타겟 GitHub Pages 레포 설정 (1회) |
-| `/hams-diary --set-template {1-5\|name}` | 사이트 디자인 템플릿 변경 |
-| `/hams-diary {file.md} [category]` | 마크다운 1개 배포 |
-| `/hams-diary {file.html} [category]` | HTML 시뮬레이터 1개 배포 |
-| `/hams-diary {dir/} [category]` | 폴더 일괄 배포 (`.md` + `.html`, 중복 자동 제외) |
-| `/hams-diary "{glob}" [category]` | 글롭 일괄 배포 (예: `"*.html"`) |
-| `/hams-diary --edit {slug}` | 기존 포스트 편집 — 에디터 자동 오픈 + 저장 시 자동 재빌드 |
-| `/hams-diary --enable-search` | Pagefind 풀텍스트 검색 켜기 (opt-in) |
-| `/hams-diary --disable-search` | 검색 끄기 |
-| `/hams-diary --enable-comments` | giscus 댓글 켜기 — 대화형 설정 (opt-in) |
-| `/hams-diary --disable-comments` | 댓글 끄기 |
+명령은 단순하다 — `publish`(게시) · `edit`(편집) · `config`(설정).
 
-## 플래그
+### `publish` — 글 올리기
 
-| 플래그 | 효과 |
-|--------|------|
-| `--no-theme` | HTML 모드의 라이트/다크 어댑터 주입 끄기 (기본 ON) |
-| `--overwrite` | 이미 존재하는 동일 slug 포스트 덮어쓰기 (기본 skip) |
-| `--draft` | push 하지 않고 워크트리만 남겨 두기 |
-| `--preview-port N` | 미리보기 서버 포트 변경 (기본 `8765`) |
+```bash
+/hams-diary publish {input} [category] [flags]
+```
+
+| input 형태 | 동작 |
+|-----------|------|
+| `./post.md` | 마크다운 1개 |
+| `./simulator.html` | HTML 1개 (라이트/다크 어댑터 자동 주입) |
+| `./drafts/` | 폴더 안 모든 `.md`+`.html` 일괄 (중복 자동 skip) |
+| `"*.md"` | 글롭 일괄 |
+| `--rebuild all` | 로컬 원본 없이 사이트의 기존 글 재테마 |
+
+**플래그**: `--no-theme` · `--overwrite` · `--draft` · `--preview-port N` · `--rebuild [slug\|all\|--category name]`
+
+### `edit` — 글 고치기
+
+```bash
+/hams-diary edit {slug}
+#  → 에디터로 _src/{slug}.{ext} 자동 오픈
+#  → 미리보기 + 자동 재빌드 watcher
+#  → 만족하면 ✅ 게시 / ❌ 취소
+```
+
+오타 1개 고치고 게시까지 30초.
+
+### `config` — 설정 한 곳
+
+```bash
+/hams-diary config show                       # 현재 설정 보기
+/hams-diary config repo {github-url}          # 타겟 레포 (1회 필수)
+/hams-diary config template {1-5|name}        # 사이트 디자인 변경
+/hams-diary config search {on|off}            # Pagefind 풀텍스트 검색
+/hams-diary config comments {on|off}          # giscus 댓글 (on=대화형)
+/hams-diary config blog-title "{제목}"        # 블로그 제목 변경
+```
 
 ## 5가지 사이트 디자인 템플릿
 
@@ -144,34 +163,48 @@ python -m http.server 8765 (백그라운드)
 ## 자주 쓰이는 예시
 
 ```bash
-# 강의 노트 1개 게시 (마크다운)
-/hams-diary ./MSA-1주차.md MSA강의
+# 일기/노트 1개 게시
+/hams-diary publish ./2026-04-26-회고.md 일상
 
-# 인터랙티브 시뮬레이터 1개 게시 (라이트/다크 어댑터 자동 주입)
-/hams-diary ./sse-simulator.html 분산시스템
+# 인터랙티브 시뮬레이터 게시 (라이트/다크 어댑터 자동 주입)
+/hams-diary publish ./sse-simulator.html 기술
 
-# 강의자료 폴더 일괄 게시 — 7개 시뮬레이터를 한 번에
-/hams-diary "C:/Users/me/lecture-files/" MSA강의
+# 폴더 일괄 게시 — 안에 있는 모든 .md/.html
+/hams-diary publish ./drafts/ 일상
 
-# 같은 폴더를 다시 실행하면 중복은 자동 skip
-# 한 개만 갱신하고 싶으면 --overwrite + 단일 파일
-/hams-diary ./sse-simulator.html 분산시스템 --overwrite
+# 같은 폴더 다시 실행하면 중복은 자동 skip
+# 한 개만 갱신하고 싶으면:
+/hams-diary publish ./sse-simulator.html 기술 --overwrite
 
-# 디자인 템플릿을 강의용으로 변경
-/hams-diary --set-template lecture
+# 디자인을 노트북 스타일로 변경
+/hams-diary config template notebook
 
 # 푸시는 안 하고 워크트리만 남겨 직접 손보기
-/hams-diary ./draft.md 강의 --draft
+/hams-diary publish ./draft.md 일상 --draft
 
-# ✏️ 기존 포스트 편집 — 에디터로 자동 오픈, 저장하면 즉시 재빌드
-/hams-diary --edit msa-k8s-websocket
-#  → 기본 에디터에서 _src/msa-k8s-websocket.html 열림
-#  → 브라우저는 http://localhost:8765/posts/msa-k8s-websocket.html 자동 표시
-#  → 에디터에서 저장할 때마다 watcher 가 재빌드 ([HH:MM:SS] rebuilt 출력)
-#  → F5 로 변경 확인 → 만족하면 ✅ 게시 / ❌ 취소
+# ✏️ 기존 포스트 편집 — 에디터 자동 오픈 + 저장하면 즉시 재빌드
+/hams-diary edit hello-world
+
+# 검색·댓글 켜기 (opt-in)
+/hams-diary config search on
+/hams-diary config comments on   # 대화형 — giscus.app 의 4개 값 입력
 ```
 
-> **편집 모드 전제**: 배포 시점에 원본을 `_src/{slug}.{ext}` 로 백업해 두는 v2+ 포맷으로 게시된 포스트만 편집 가능하다. v1 시절(이전) 포스트는 `--overwrite` 로 한 번 재배포 후부터 편집 모드 사용 가능.
+> **편집 모드 전제**: 배포 시점에 원본을 `_src/{slug}.{ext}` 로 백업해 두는 포맷으로 게시된 포스트만 편집 가능. 옛 포맷 포스트는 `publish ... --overwrite` 로 한 번 재배포 후부터.
+
+## 옛 명령어 호환
+
+이전 플래그 형태도 그대로 인식된다 — 점진적 전환 위함.
+
+| 옛 명령 | 새 명령 |
+|---|---|
+| `/hams-diary {file}` | `/hams-diary publish {file}` |
+| `/hams-diary --edit {slug}` | `/hams-diary edit {slug}` |
+| `/hams-diary --set-repo {url}` | `/hams-diary config repo {url}` |
+| `/hams-diary --set-template {n}` | `/hams-diary config template {n}` |
+| `/hams-diary --enable-search` / `--disable-search` | `/hams-diary config search {on\|off}` |
+| `/hams-diary --enable-comments` / `--disable-comments` | `/hams-diary config comments {on\|off}` |
+| `/hams-diary --rebuild-remote ...` | `/hams-diary publish --rebuild ...` |
 
 ## 🔍 검색 · 💬 댓글 (opt-in)
 
@@ -182,8 +215,8 @@ DB·서버 추가 없이 두 가지를 켤 수 있다. 둘 다 기본 OFF.
 빌드 시점에 모든 포스트의 풀텍스트 인덱스를 정적 파일(`pagefind/`)로 출력. 브라우저가 필요한 인덱스 조각만 fetch 해서 검색. **Algolia·Elasticsearch 같은 외부 서비스 불필요**.
 
 ```bash
-/hams-diary --enable-search   # Node.js 18+ 필요 (npx pagefind 호출)
-/hams-diary ./new-post.md 강의   # 다음 배포부터 모든 포스트가 인덱싱됨
+/hams-diary config search on      # Node.js 18+ 필요 (npx pagefind 호출)
+/hams-diary publish ./new.md 일상 # 다음 게시부터 모든 글이 인덱싱됨
 ```
 
 홈 화면에 검색창이 자동으로 생기고, 본문 안 단어로 즉시 결과 매칭.
@@ -196,13 +229,13 @@ DB·서버 추가 없이 두 가지를 켤 수 있다. 둘 다 기본 OFF.
 1. GitHub 레포에서 Discussions 활성화 (Settings → Features)
 2. https://giscus.app 에서 [giscus app 설치 + 설정](https://giscus.app)
 3. 페이지 하단의 `data-repo`, `data-repo-id`, `data-category`, `data-category-id` 4개 값 복사
-4. `/hams-diary --enable-comments` 실행 → 4개 값 입력
+4. `/hams-diary config comments on` 실행 → 4개 값 입력
 
 이후 모든 포스트 하단에 giscus iframe 자동 임베드. 라이트/다크 토글 시 댓글 영역도 함께 변환.
 
 ```bash
-/hams-diary --enable-comments       # 대화형 설정
-/hams-diary --disable-comments      # 끄기 (이미 단 댓글은 GitHub 에 그대로 보존)
+/hams-diary config comments on    # 대화형 설정
+/hams-diary config comments off   # 끄기 (이미 단 댓글은 GitHub 에 그대로 보존)
 ```
 
 ### 의존성 한눈에
@@ -247,6 +280,18 @@ DB·서버 추가 없이 두 가지를 켤 수 있다. 둘 다 기본 OFF.
 ## 📝 변경 내역 (Changelog)
 
 > 버전 관리는 git commit SHA 로 한다 (`/plugin update hams` 가 매 커밋마다 새 버전으로 인식). 아래는 사용자 관점의 굵직한 변화만 정리.
+
+### 2026-04-26 — 명령어 단순화 (3 서브명령 + 개인 블로그 프레이밍)
+
+- 7~8 개 플래그 → **3개 서브명령**: `publish` · `edit` · `config`
+  - `--set-repo`, `--set-template`, `--enable-search`, `--disable-search`, `--enable-comments`, `--disable-comments` → `config` 하나로 통합
+  - `{file}/{dir}/{glob}` 모드 + `--rebuild-remote` → `publish` 하나로 통합
+  - `--edit` → `edit`
+- **옛 명령은 그대로 인식** (라우팅) — 점진적 전환 가능
+- README · SKILL.md 의 프레이밍을 "강의자료 일괄 배포" → "**개인 블로그 운영**"으로 정정
+  · 핵심 사용자: 강사·연구자·개발자가 자기 글을 한 곳에 모으는 것
+  · 강의자료 배포는 그중 하나의 use case일 뿐
+- 새 예시 블록: 일기/노트/시뮬레이터/검색·댓글 토글 — 강의 색채 줄이고 일반 블로깅 시나리오 강조
 
 ### 2026-04-26 — 검색·댓글 통합 (opt-in)
 

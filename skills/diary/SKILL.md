@@ -1,18 +1,13 @@
 ---
 name: diary
 description: |
-  로컬 마크다운(.md) 또는 HTML 시뮬레이터(.html)를 GitHub Pages 블로그에 배포한다.
-  배포 전 로컬 미리보기 서버를 띄워 브라우저로 검수하고 사용자가 승인한 후에만 푸시한다.
-  배치 모드(폴더/글롭)와 5가지 사이트 디자인 템플릿(minimal, tech, lecture, notebook, magazine)을 지원한다.
-  강의자료 일괄 배포에 최적화되어 있다.
+  로컬에서 작성한 마크다운(.md) 혹은 HTML을 GitHub Pages 개인 블로그에 정리하는 도구.
+  배포 전 로컬 미리보기 서버로 검수하고 승인 후에만 푸시한다.
+  강사·연구자·개발자가 자기 글을 한 곳에 모아 운영하기 좋다.
   사용법:
-    /hams-diary {file.md|file.html|dir/|glob} [category]
-    /hams-diary --edit {slug}
-    /hams-diary --rebuild-remote {slug|all|--category name}
-    /hams-diary --set-repo {github-url}
-    /hams-diary --set-template {1-5|name}
-    /hams-diary --enable-search | --disable-search
-    /hams-diary --enable-comments | --disable-comments
+    /hams-diary publish {file|dir|glob} [category]   # 게시 (단일/일괄 자동 감지)
+    /hams-diary edit {slug}                           # 편집
+    /hams-diary config <subcommand>                   # 설정
 allowed-tools:
   - Bash
   - Read
@@ -25,40 +20,81 @@ allowed-tools:
 
 # /hams-diary
 
-로컬 강의자료(MD 또는 인터랙티브 HTML)를 GitHub Pages 블로그에 게시한다. 핵심 차별점:
+로컬에서 작성한 마크다운·HTML 파일을 **GitHub Pages 개인 블로그**에 정리·게시하는 도구. 글쓰기는 익숙한 에디터에서 하고, 정리·배포·검수만 자동화한다.
 
-1. **3가지 입력 모드** — 마크다운, HTML 시뮬레이터, 폴더/글롭 일괄 배포
-2. **목업 → 승인 게이트** — 로컬에서 빌드 후 `python -m http.server` 로 브라우저 미리보기, 사용자 승인 후에만 commit/push/merge
-3. **5가지 디자인 템플릿** — `minimal`, `tech`, `lecture`, `notebook`, `magazine` 중 선택
-4. **중복 자동 제외** — 배치 모드에서 같은 slug 의 포스트는 skip (--overwrite 로 강제)
-5. **편집 모드** — `--edit {slug}` 로 기존 포스트를 에디터에 열고 저장 시 자동 재빌드, 미리보기 새로고침
-6. **검색·댓글 (opt-in)** — Pagefind 풀텍스트 검색·giscus GitHub Discussions 댓글, DB 0개로 추가 가능
-7. **재빌드 모드** — `--rebuild-remote` 로 로컬 원본 없이도 사이트의 기존 포스트를 내려받아 어댑터 재적용 후 재업로드 (테마/시그니처 일괄 갱신)
-8. **안전한 덮어쓰기** — `originalFilename` 기반 매칭으로 한글 파일명 → ASCII slug 변환 시 drift 가 있어도 같은 글로 식별. 매칭 시 기존 slug 재사용 (URL 보존)
+## 핵심 가치
+
+1. **로컬 우선** — 글은 자기 컴퓨터의 `.md` 파일로 살아있고, 블로그는 그 출력물.
+2. **목업 후 게시** — 로컬에서 미리보기 서버 → 브라우저 검수 → 승인 → push.
+3. **5가지 디자인** — `minimal` / `tech` / `lecture` / `notebook` / `magazine` 중 한 줄 명령으로 변경.
+4. **DB 없이 풍부한 기능** — opt-in 검색(Pagefind) · 댓글(giscus) · 라이트/다크 자동 변환 · 한글 파일명 안전 처리.
 
 ---
 
 ## 사용 방법
 
-```bash
-/hams-diary --set-repo {url}                    # 1. 타겟 레포 설정
-/hams-diary --set-template {1-5|name}           # 2. 템플릿 선택
-/hams-diary {file.md} [category]                # 3. 마크다운 1개 배포
-/hams-diary {file.html} [category]              # 4. HTML 시뮬레이터 1개 배포
-/hams-diary {dir/} [category]                   # 5. 폴더 일괄 배포
-/hams-diary "{glob}" [category]                 # 6. 글롭 일괄 배포 (예: "*.html")
-/hams-diary --edit {slug}                       # 7. 기존 포스트 편집 (자동 재빌드)
+명령은 3개의 서브명령으로 통합되어 있다.
 
-# 재빌드 모드 (로컬 원본 없이 사이트 글 재테마/재시그니처)
-/hams-diary --rebuild-remote {slug}             # 8. 단일 slug 재빌드
-/hams-diary --rebuild-remote all                # 9. 전체 재빌드
-/hams-diary --rebuild-remote --category {name}  # 10. 카테고리 단위 재빌드
+### `publish` — 글 올리기
+
+```bash
+/hams-diary publish {input} [category] [flags]
+
+# input 자동 감지
+/hams-diary publish ./post.md 일상           # 단일 마크다운
+/hams-diary publish ./simulator.html 강의    # 단일 HTML
+/hams-diary publish ./drafts/ 일상           # 폴더 일괄 (.md + .html)
+/hams-diary publish "*.md" 일상              # 글롭 일괄
+/hams-diary publish --rebuild all            # 로컬 원본 없이 사이트 글 재테마
 
 # 플래그
-/hams-diary {input} --no-theme                  # HTML 어댑터 주입 끄기
-/hams-diary {input} --overwrite                 # 기존 동일 항목 덮어쓰기 (originalFilename → slug → 제목 유사도 순 매칭)
-/hams-diary {input} --draft                     # 푸시하지 않고 워크트리만 남김
-/hams-diary {input} --preview-port 9000         # 미리보기 서버 포트 변경 (기본 8765)
+--no-theme         # HTML 어댑터 주입 끄기
+--overwrite        # 기존 동일 글 덮어쓰기 (originalFilename → slug → 제목 매칭)
+--draft            # 푸시 안 하고 워크트리만 남김
+--preview-port N   # 미리보기 포트 (기본 8765)
+--rebuild [slug|all|--category name]   # 사이트 기존 글 재테마/재시그니처
+```
+
+`category` 가 비어있으면 AskUserQuestion 으로 선택받는다.
+
+### `edit` — 글 고치기
+
+```bash
+/hams-diary edit {slug}
+# → 에디터에서 _src/{slug}.{ext} 자동 오픈
+# → 미리보기 서버 + 브라우저 자동 표시
+# → 저장하면 watcher 가 자동 재빌드
+# → ✅ 게시 / ❌ 취소
+```
+
+### `config` — 설정 한 곳
+
+```bash
+/hams-diary config show                       # 현재 설정 표시
+/hams-diary config repo {github-url}          # 타겟 레포 (1회 필수)
+/hams-diary config template {1-5|name}        # 사이트 디자인 변경
+/hams-diary config search {on|off}            # Pagefind 풀텍스트 검색
+/hams-diary config comments {on|off}          # giscus 댓글 (on 은 대화형)
+/hams-diary config blog-title "{title}"       # 블로그 제목 변경
+```
+
+---
+
+## 하위호환 (구 명령어)
+
+이전 플래그 형태도 그대로 인식되어 동등한 신 명령으로 라우팅된다 — 점진적 전환을 위함.
+
+| 구 명령 | 신 명령 |
+|---|---|
+| `/hams-diary {file} [cat]` (서브명령 없음) | `/hams-diary publish {file} [cat]` |
+| `/hams-diary --edit {slug}` | `/hams-diary edit {slug}` |
+| `/hams-diary --set-repo {url}` | `/hams-diary config repo {url}` |
+| `/hams-diary --set-template {n}` | `/hams-diary config template {n}` |
+| `/hams-diary --enable-search` / `--disable-search` | `/hams-diary config search {on\|off}` |
+| `/hams-diary --enable-comments` / `--disable-comments` | `/hams-diary config comments {on\|off}` |
+| `/hams-diary --rebuild-remote ...` | `/hams-diary publish --rebuild ...` |
+
+내부 동작은 동일하므로 기존 워크플로우는 그대로 작동한다. README/문서는 신 명령 기준으로 작성한다.
 
 # 기능 토글 (opt-in)
 /hams-diary --enable-search                     # Pagefind 풀텍스트 검색 켜기
