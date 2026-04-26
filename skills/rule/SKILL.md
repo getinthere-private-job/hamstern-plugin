@@ -469,8 +469,145 @@ rm -rf .claude/rules/references/{topic}/
 
 ## §promote — .hamstern/why/rules/ 에서 수동 격상
 
-(Task 5에서 채움)
+`/hams:why` 가 매칭하지 못했지만 사용자가 "이건 격상해야겠다" 싶을 때 명시적으로 트리거.
+
+### Step P1: 마커 ON
+
+```bash
+mkdir -p .hamstern && touch .hamstern/.deeptalk-running
+```
+
+`.hamstern/` 미존재 프로젝트면 그냥 종료 (잠정 룰이 있을 수가 없음 — `.hamstern/why/rules/` 는 hamstern 활성 프로젝트에만 존재). 모든 종료 경로에서 `rm -f` 필수.
+
+### Step P2: topic 인자 검증
+
+호출: `/hams:rule promote {topic}`
+
+`{topic}` 인자가 없으면:
+```
+사용법: /hams:rule promote {topic}
+잠정 룰 목록 확인:
+  ls .hamstern/why/rules/
+```
+출력 후 마커 OFF, 종료.
+
+### Step P3: 원본 존재 확인
+
+```bash
+test -f .hamstern/why/rules/{topic}.md
+```
+
+없으면:
+```
+❌ .hamstern/why/rules/{topic}.md 가 없습니다.
+   확인: ls .hamstern/why/rules/
+```
+마커 OFF, 종료.
+
+### Step P4: 이미 격상됐는지 확인
+
+원본 파일 첫 5줄에 `> 격상됨` 패턴이 있으면:
+```
+ℹ️  {topic} 은 이미 격상되었습니다.
+   현재 위치: .claude/rules/{topic}.md
+```
+마커 OFF, 종료.
+
+### Step P5: 원본 읽기 + 자동 분류
+
+`.hamstern/why/rules/{topic}.md` 의 내용을 Read 하여 다음을 추출:
+
+- `**표면 원인:**` 라인 → surface_cause
+- `**근본 원인:**` 라인 → root_cause
+- `**원칙:**` 라인 → principle
+- `**트리거:**` 라인 → trigger_context (등록 당시 발견 계기)
+- `**발견:**` 라인 → 첫 발견 날짜
+
+타입 판정: 원본에 코드 스니펫이 있는지 확인.
+- HTML/CSS/JSX 마크업이 있으면 → **디자인**
+- 일반 코드만 있으면 → **코드**
+- 둘 다 → **둘 다**
+- 아무 코드도 없으면 → **코드** (기본)
+
+### Step P6: 적용 범위 질문 (`AskUserQuestion`)
+
+§add Step A5와 동일:
+```
+적용 범위를 선택하세요:
+1. 전역 (모든 작업에서 항상 로드)
+2. 특정 경로 한정 (예: src/components/**, src/api/**)
+```
+
+옵션 2면 후속 질문으로 글로브 입력 받음.
+
+### Step P7: 파일 생성
+
+§add Step A7 의 파일 생성 5개와 동일하지만 **입력 소스가 다름**:
+
+- 원칙·표면 원인·근본 원인·trigger_context 는 `.hamstern/why/rules/{topic}.md` 에서 추출한 값 사용 (Step P5)
+- `examples.md` 의 코드 예시는 원본에 코드 스니펫이 있으면 사용. 없으면 빈 문자열 치환 후 사용자에게 안내:
+  ```
+  ⚠️  좋은 예시 코드를 추가하려면 /hams:rule edit {topic} 를 사용하세요.
+  ```
+- `mockup.html` 은 디자인/둘 다 타입에서만 생성. 원본에 HTML 마크업이 있으면 사용, 없으면 placeholder 메시지를 `{{good_html}}` 에 넣음 (`<p>예시 마크업을 /hams:rule edit {topic} 로 추가해주세요.</p>`).
+- `history.md` 의 치환:
+  - `{{registration_path}}` → `"/hams:rule promote (수동 격상)"`
+  - `{{discovery_log}}` → 원본의 발견 정보를 옮김 (Step P5의 `**발견:**` 날짜 + trigger_context)
+  - `{{recurrence_log}}` → 원본에 재발 이력이 있으면 그것을 옮김, 없으면 `(아직 없음)`
+
+치환 규칙(빈 문자열 처리, paths frontmatter 형식 등)은 §add Step A7 의 규칙을 그대로 따름.
+
+### Step P8: 원본에 격상 마커 추가
+
+`.hamstern/why/rules/{topic}.md` 의 맨 위에 다음 한 줄을 Edit으로 삽입한다.
+
+삽입 위치:
+- 파일에 frontmatter (---)가 있으면 frontmatter 종료(--- 닫기) 다음 빈 줄 뒤
+- frontmatter가 없으면 첫 번째 헤딩(## 등) 직전
+
+삽입할 줄:
+```
+> 격상됨 → .claude/rules/{topic}.md ({YYYY-MM-DD})
+```
+
+날짜는 시스템 오늘 날짜 (`date +%F`).
+
+### Step P9: 마커 OFF + 완료 메시지
+
+```bash
+rm -f .hamstern/.deeptalk-running
+```
+
+```
+🚀 {topic} 영구 룰로 격상
+   포인터    : .claude/rules/{topic}.md
+   본문      : .claude/rules/references/{topic}/
+   원본 마커 : .hamstern/why/rules/{topic}.md (격상됨 표시)
+
+▶ 다음 세션부터 자동으로 컨텍스트에 로드됩니다.
+```
+
+### Step P10: 자가검증
+
+§add Step A9 와 동일:
+- `.claude/rules/{topic}.md` 가 5~10줄 사이?
+- 디자인/둘 다 타입이면 `mockup.html` 존재?
+- `references/{topic}/` 안에 rule.md, examples.md, history.md 존재?
+- 포인터의 frontmatter 가 paths 옵션 선택과 일치?
+- 원본 `.hamstern/why/rules/{topic}.md` 에 `> 격상됨` 라인이 추가됐나? (Step P8 검증)
+
+검증 실패 시 어떤 검증이 실패했는지 보고 + 작성한 파일 경로 알려주고 마커 OFF 후 종료.
 
 ## Common Mistakes
 
-(전체 작성 완료 후 Task 5에서 채움)
+- **`/hams:rule add` 호출 시 컨텍스트가 비어 있는데도 진행** → 1차 초안이 의미 없는 placeholder가 됨. 컨텍스트 부족 시 폴백 메시지 출력 후 사용자에게 직접 정보 요청 (Step A1 참고).
+- **topic을 한국어/snake_case로 생성** → kebab-case 영문 명사구 강제. `테이블헤더` ❌ → `table-header-layout` ✅.
+- **포인터에 본문을 다 욱여넣음** → 토큰 부채. 포인터는 5~10줄, 자세한 건 `references/{topic}/`. 본문은 lazy load 되도록.
+- **mockup.html을 코드 타입 룰에도 생성** → 불필요. Step A2 타입 판정 결과를 따른다 — 코드 타입은 mockup 없음.
+- **paths frontmatter 글로브 인용 부호 누락** → `paths:` 의 글로브는 따옴표 필수 (`"src/components/**"`). 따옴표 빼면 YAML 파서 에러. 단일 따옴표/이중 따옴표 모두 가능하나 일관되게.
+- **`.hamstern/.deeptalk-running` 마커 정리 누락** → baby-hamster 노이즈가 다음 세션까지 묻힘. add/promote 의 모든 종료 경로(성공/취소/오류/검증실패)에서 `rm -f`. 24h mtime 만료가 안전망이지만 의존하지 말 것.
+- **promote 시 원본 그대로 두고 격상 마커도 안 박음** → 다음 호출 시 "이미 격상됐는지" 판단 불가 (Step P4). Step P8 필수.
+- **edit/remove 가 references 폴더 빠뜨림** → edit는 references 까지 모두 표시·수정 대상, remove는 폴더 전체 `rm -rf`.
+- **list 가 references/*.md 도 룰로 표시** → `.claude/rules/*.md` 셸 글로브는 직속만 매칭함을 확인. 재귀하려면 `**` 필요. references/ 하위는 자동 제외됨.
+- **mockup.html 의 `{{custom_css}}` 에 사용자 입력 그대로 주입** → `</style>` 시퀀스가 있으면 style 블록을 깨뜨리고 그 뒤가 raw HTML로 렌더됨. Step A7 #4 의 안전성 주의 참고.
+- **promote 가 `.hamstern/.deeptalk-running` 마커를 켜지 않고 시작** → 사용자와 다회 상호작용 발생 시 baby-hamster 에 노이즈로 기록됨. Step P1 필수.
