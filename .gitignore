@@ -20,6 +20,9 @@ __pycache__/
 # Superpowers ephemeral session state (brainstorm scratch dirs, server PIDs, etc.)
 .superpowers/
 
+# Superpowers-generated design docs (internal planning artifacts, not user-facing)
+docs/superpowers/
+
 # Local dev artifacts
 *.log
 *.pid
