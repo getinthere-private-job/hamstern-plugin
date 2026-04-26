@@ -8,6 +8,7 @@ description: |
   사용법:
     /hams-diary {file.md|file.html|dir/|glob} [category]
     /hams-diary --edit {slug}
+    /hams-diary --rebuild-remote {slug|all|--category name}
     /hams-diary --set-repo {github-url}
     /hams-diary --set-template {1-5|name}
     /hams-diary --enable-search | --disable-search
@@ -32,6 +33,8 @@ allowed-tools:
 4. **중복 자동 제외** — 배치 모드에서 같은 slug 의 포스트는 skip (--overwrite 로 강제)
 5. **편집 모드** — `--edit {slug}` 로 기존 포스트를 에디터에 열고 저장 시 자동 재빌드, 미리보기 새로고침
 6. **검색·댓글 (opt-in)** — Pagefind 풀텍스트 검색·giscus GitHub Discussions 댓글, DB 0개로 추가 가능
+7. **재빌드 모드** — `--rebuild-remote` 로 로컬 원본 없이도 사이트의 기존 포스트를 내려받아 어댑터 재적용 후 재업로드 (테마/시그니처 일괄 갱신)
+8. **안전한 덮어쓰기** — `originalFilename` 기반 매칭으로 한글 파일명 → ASCII slug 변환 시 drift 가 있어도 같은 글로 식별. 매칭 시 기존 slug 재사용 (URL 보존)
 
 ---
 
@@ -46,9 +49,14 @@ allowed-tools:
 /hams-diary "{glob}" [category]                 # 6. 글롭 일괄 배포 (예: "*.html")
 /hams-diary --edit {slug}                       # 7. 기존 포스트 편집 (자동 재빌드)
 
+# 재빌드 모드 (로컬 원본 없이 사이트 글 재테마/재시그니처)
+/hams-diary --rebuild-remote {slug}             # 8. 단일 slug 재빌드
+/hams-diary --rebuild-remote all                # 9. 전체 재빌드
+/hams-diary --rebuild-remote --category {name}  # 10. 카테고리 단위 재빌드
+
 # 플래그
 /hams-diary {input} --no-theme                  # HTML 어댑터 주입 끄기
-/hams-diary {input} --overwrite                 # 기존 동일 slug 덮어쓰기
+/hams-diary {input} --overwrite                 # 기존 동일 항목 덮어쓰기 (originalFilename → slug → 제목 유사도 순 매칭)
 /hams-diary {input} --draft                     # 푸시하지 않고 워크트리만 남김
 /hams-diary {input} --preview-port 9000         # 미리보기 서버 포트 변경 (기본 8765)
 
@@ -240,19 +248,24 @@ touch .nojekyll  # GitHub Pages 가 _underscore 폴더를 무시하지 않도록
 
 ---
 
-## 4️⃣ posts.json 갱신 (메모리상)
+## 4️⃣ posts.json 갱신 (메모리상) — 안전한 매칭
 
 ```bash
 # 기존 posts.json 로드 (없으면 빈 구조)
 [ -f posts.json ] && cat posts.json || echo '{"categories":[],"posts":[]}'
 ```
 
-각 job 에 대해:
+각 job 에 대해 **3단계 매칭 우선순위** 로 기존 항목을 찾는다 (한글 파일명 → ASCII slug 변환 시 drift 가 있어도 같은 글로 식별 가능하게):
 
-1. `posts[].id == job.slug` 인 항목 검색
-2. 있고 `--overwrite` 미설정: `[skip] {filename} → already exists as id=${slug}` 출력, 이 job 제외
-3. 있고 `--overwrite` 설정: 기존 항목 제거 후 새로 삽입
-4. 없음: 신규 삽입
+1. **`originalFilename` 일치** (1순위) — `os.path.basename(SRC)` 와 `posts[].originalFilename` 직접 비교. 한글 원본 파일명 그대로 비교하므로 slug 알고리즘이 바뀌어도 면역.
+2. **`id == job.slug` 일치** (2순위) — 기존 동작. originalFilename 이 빈 옛 항목 (마이그레이션 전) 호환용.
+3. **제목 유사도 ≥ 0.85 + 같은 `engine`** (3순위) — `difflib.SequenceMatcher` 로 비교. 후보가 정확히 1건이면 AskUserQuestion 으로 사용자 확인 ("기존 글 'X' 와 같은 글입니까? 덮어쓸까요 / 신규 추가할까요"). 후보가 2건 이상이면 AskUserQuestion 으로 선택 또는 신규 추가.
+
+매칭 결과 처리:
+
+- **매칭 발견 + `--overwrite` 미설정**: `[skip] {filename} → already exists as id=${existing_slug}` 출력, 이 job 제외
+- **매칭 발견 + `--overwrite` 설정**: **기존 slug 재사용** (URL 보존). `posts/{existing_slug}.html` 덮어쓰기, `_src/{existing_slug}.{ext}` 갱신, posts.json 항목 in-place 업데이트. 새 slug 절대 생성 안 함.
+- **매칭 없음**: 새 slug 로 신규 삽입.
 
 스키마 (기존 호환 + 신규 필드):
 ```json
@@ -265,9 +278,13 @@ touch .nojekyll  # GitHub Pages 가 _underscore 폴더를 무시하지 않도록
   "filename": "posts/{slug}.html",
   "tags": ["..."],
   "engine": "md" | "html",
-  "themeInjected": true | false
+  "themeInjected": true | false,
+  "sourcePath": "_src/{slug}.{ext}",
+  "originalFilename": "원본_파일명.html"
 }
 ```
+
+> **`originalFilename` 마이그레이션** — 기존 항목에 이 필드가 없는 경우, 다음 배포·재빌드 시 자동으로 채워진다. 1순위 매칭은 그냥 건너뛰고 2순위(slug)로 폴백되므로 옛 데이터 손상 없음.
 
 `category` 가 `categories[]` 에 없으면 추가.
 
@@ -303,16 +320,18 @@ python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
 
 > 어댑터는 원본 HTML 의 dominant background 를 자동 감지해 `data-osd-source-theme="light|dark"` 로 표시한다. 사용자가 선택한 블로그 테마와 톤이 다를 때만 invert 필터를 걸어 자동 변환하므로, 라이트 톤 원본(예: 베이지) 도 다크 블로그에서 자연스럽게 보인다. (감지 실패 시 기존 동작인 `dark` 가정.)
 
-### 원본 소스 보존 (`_src/`)
+### 원본 소스 보존 (`_src/`) + originalFilename 기록
 
-배포 시 원본 파일을 워크트리의 `_src/{slug}.{ext}` 로도 복사한다. 나중에 `--edit {slug}` 로 편집할 때 이 원본을 에디터에 열어준다.
+배포 시 원본 파일을 워크트리의 `_src/{slug}.{ext}` 로도 복사한다. 나중에 `--edit {slug}` 또는 `--rebuild-remote` 시 이 원본을 사용한다.
 
 ```bash
 mkdir -p _src
 cp "${SRC}" "_src/${slug}.${EXT}"   # ext = md or html (변환 전 파일)
 ```
 
-posts.json 의 `sourcePath` 필드에도 경로를 기록 (`"sourcePath": "_src/{slug}.{ext}"`).
+posts.json 의 두 필드에 기록:
+- `sourcePath`: `"_src/{slug}.{ext}"` — 백업 파일 위치
+- `originalFilename`: `os.path.basename(SRC)` — **매칭 1순위 키**. 한글 파일명 그대로 (`"Saga 오케스트레이션 _kafka.html"` 같은 형태) 저장. 다음 `--overwrite` 때 slug 가 다르게 나와도 이 필드로 같은 글이라고 식별.
 
 `_src/` 는 GitHub Pages 가 무시하지 않도록 `.nojekyll` 만 있으면 그대로 서빙되지만, 보통 사이트에는 노출되지 않게 `index.html` 의 라우팅 대상 외다 — 그냥 레포에만 보관되는 원본 백업이다.
 
@@ -542,10 +561,10 @@ git worktree remove --force "$WORKTREE_DIR"
 
 ### `_src/` 가 없는 기존 포스트
 
-`/hams-diary` v1 시절(즉, `_src/` 백업 도입 이전)에 게시된 포스트는 `posts/{slug}.html` 의 빌드 결과만 레포에 있다. 이런 포스트를 편집하려면:
+`/hams-diary` v1 시절(즉, `_src/` 백업 도입 이전)에 게시된 포스트는 `posts/{slug}.html` 의 빌드 결과만 레포에 있다. 처리 경로:
 
-- **MD 였던 포스트**: 원본 `.md` 가 손에 있다면 `--overwrite` 로 재배포해 자동으로 `_src/` 백업 생성
-- **HTML 시뮬레이터**: 원본 손에 없으면 `posts/{slug}.html` 에서 어댑터 블록(주석 마커로 식별 가능)을 제거해 원본을 추출하는 fallback 가능 (별도 도구 필요, 현재 미제공)
+- **HTML 시뮬레이터**: `--rebuild-remote {slug}` 가 자동으로 `extract_original_html.py` 를 돌려 어댑터 마커 사이 블록을 제거 → 원본 복원 → `_src/` 에 저장 → 어댑터 재주입. 손에 원본 파일 없어도 됨.
+- **MD 였던 포스트**: 역변환 비신뢰 (HTML→MD 손실). 원본 `.md` 가 손에 있다면 `--overwrite` 로 재배포해 `_src/` 백업 생성. 없으면 skip + 경고.
 
 가장 안전한 길: 첫 게시 후엔 원본을 로컬에서 보관하지 말고, 항상 `_src/` 를 진실의 원본으로 사용한다.
 
@@ -571,6 +590,66 @@ WATCHER_PID=$!
 ### 메타데이터(제목·요약·카테고리·태그) 편집
 
 본문이 아닌 메타만 바꾸고 싶으면 `_src/` 의 frontmatter(MD) 또는 `<title>`/`<meta>` 태그(HTML)를 수정하면 watcher 가 추출해 posts.json 도 갱신한다 (재빌드 시 메타 추출 로직이 동일하게 돌기 때문).
+
+---
+
+## 🔄 재빌드 모드 (`--rebuild-remote`)
+
+**언제 쓰나** — 어댑터 로직이 바뀌었거나 새로운 시그니처/테마/기능 토글을 기존 모든 글에 일괄 적용하고 싶을 때. 로컬에 원본 파일이 있을 필요가 없다 (레포의 `_src/` 또는 `posts/{slug}.html` 역추출이 소스가 됨).
+
+### 호출 형태
+
+```bash
+/hams-diary --rebuild-remote msa-k8s-websocket          # 단일
+/hams-diary --rebuild-remote all                        # 전체
+/hams-diary --rebuild-remote --category msa             # 카테고리
+```
+
+### 흐름
+
+```
+[1] 설정 Read → REPO clone/pull → 워크트리 생성 (BR=rebuild-{TS})
+[2] posts.json 로드 → 대상 entries 결정:
+    - {slug}      : 단일 entry (없으면 종료)
+    - all         : posts[] 전체
+    - --category X: posts[].category == X 인 것들
+[3] 첫 배포 판단 (index.html 부재 / 템플릿 변경) → 템플릿 다시 입힘
+[4] 각 entry 에 대해 SOURCE 결정 (우선순위):
+    a. _src/{slug}.{ext} 존재 → 그대로 사용
+    b. engine == html, _src/ 없음:
+       extract_original_html.py --src posts/{slug}.html --dst _src/{slug}.html
+       → 원본 복원 후 (a) 와 같이 사용. _src/ 없는 옛날 글의 자가치유.
+    c. engine == md, _src/ 없음 → skip + 경고 ("MD 역변환 비신뢰; 원본 .md 로 --overwrite 재배포 필요")
+[5] SOURCE 로 빌더 재호출:
+    - md  → markdown→html 변환 → _post-frame.html 치환 → posts/{slug}.html
+    - html → inject_html_adapter.py --src _src/{slug}.html --dst posts/{slug}.html --title "{title}"
+[6] posts.json 의 themeInjected/sourcePath/originalFilename(없으면 채움) 갱신
+[7] 미리보기 서버 + 브라우저 오픈 → 첫 N개 (3개 권장) URL 안내
+[8] AskUserQuestion 승인 게이트:
+    ✅ 게시 → commit + push + PR + merge (메시지: "rebuild: re-apply adapter to N posts")
+    ✏️ 수정 → 워크트리 두고 안내 후 종료 (사용자 직접 수정)
+    ❌ 취소 → 워크트리/브랜치 삭제, push 0회
+[9] 워크트리 정리
+```
+
+### 명령어 호출 예
+
+```bash
+# extract (HTML 역추출)
+python3 "${PLUGIN_ROOT}/skills/diary/extract_original_html.py" \
+  --src "posts/${slug}.html" --dst "_src/${slug}.html"
+
+# 그 후 평소처럼 inject
+python3 "${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py" \
+  --src "_src/${slug}.html" --dst "posts/${slug}.html" \
+  --title "${TITLE}" ${NO_THEME:+--no-theme}
+```
+
+### 안전장치
+
+- 변경 없는 entry (재빌드 후 `posts/{slug}.html` 바이트가 동일) 는 commit 에서 자동 제외 (`git diff --quiet`)
+- `all` 모드는 처리 전 AskUserQuestion 로 "총 N개 재빌드합니다. 계속?" 확인
+- MD entry skip 시 결과 출력에서 `[skip] {slug} (MD, _src/ 없음)` 로 명시
 
 ---
 
@@ -605,26 +684,27 @@ WATCHER_PID=$!
 
 ## 내부 구현 체크리스트 (Claude 가 따를 순서)
 
-- [ ] **인자 파싱** — `--set-repo`, `--set-template`, `--edit`, `--no-theme`, `--overwrite`, `--draft`, `--preview-port`, 위치 인자(파일/디렉토리/글롭, 카테고리)
+- [ ] **인자 파싱** — `--set-repo`, `--set-template`, `--edit`, `--rebuild-remote`, `--no-theme`, `--overwrite`, `--draft`, `--preview-port`, 위치 인자(파일/디렉토리/글롭, 카테고리)
 - [ ] `--set-repo` 분기 — JSON 저장 후 종료
 - [ ] `--set-template` 분기 — JSON 갱신 후 종료
 - [ ] `--edit {slug}` 분기 — 편집 모드 흐름(아래 별도 섹션)으로 진입
+- [ ] `--rebuild-remote {slug|all|--category X}` 분기 — 재빌드 모드 흐름(아래 별도 섹션)으로 진입
 - [ ] `~/.claude/hams-diary.json` Read (없으면 AskUserQuestion)
 - [ ] REPO_URL, OWNER, NAME, PAGES_URL, TEMPLATE, LOCAL_DIR, WORKTREE_DIR, BASE_BRANCH 결정
 - [ ] **JOBS 배열 구성** — 단일/디렉토리/글롭 분기, 한글 파일명 PowerShell 폴백
-- [ ] 각 job 메타 추출 (title/summary/tags/slug/category)
+- [ ] 각 job 메타 추출 (title/summary/tags/slug/category, **originalFilename**)
 - [ ] category 미결정시 AskUserQuestion
 - [ ] LOCAL_DIR clone/pull
 - [ ] WORKTREE_DIR worktree add
 - [ ] 첫 배포 판단 (index.html 부재 또는 .diary-meta.json template 다름) → 템플릿 복사 + {{BLOG_*}} 치환 + .nojekyll
 - [ ] BLOG_TITLE 등 미설정시 AskUserQuestion
 - [ ] posts.json 로드 (없으면 빈 구조)
-- [ ] 각 job: 중복 검사 → skip 또는 신규 삽입 (`--overwrite` 면 교체)
+- [ ] **각 job: 3단계 매칭** (originalFilename → slug → 제목 유사도 ≥0.85+같은 engine), 매칭 발견 시 기존 slug 재사용. `--overwrite` 미설정이면 skip, 설정이면 in-place 교체. 매칭 없음이면 신규 삽입.
 - [ ] posts.json 워크트리에 Write
 - [ ] **각 job 실행**:
   - md → 인라인 변환 또는 markdown 라이브러리 → `_post-frame.html` 치환 → `posts/{slug}.html` 기록
   - html → `inject_html_adapter.py --src --dst --title [--no-theme]` 호출
-  - **원본 백업**: `cp ${SRC} _src/${slug}.${EXT}` 후 posts.json 의 `sourcePath` 필드에 경로 기록
+  - **원본 백업**: `cp ${SRC} _src/${slug}.${EXT}` + posts.json 에 `sourcePath` 와 **`originalFilename`** 필드 기록
 - [ ] **미리보기 서버 시작** — `python3 -m http.server $PORT &` (PID 저장)
 - [ ] **브라우저 자동 오픈** — OS별 분기 (start/open/xdg-open)
 - [ ] **AskUserQuestion 승인 게이트** — ✅게시 / ✏️수정 / ❌취소
@@ -653,13 +733,34 @@ WATCHER_PID=$!
 - [ ] ✅: watcher·서버 종료 → commit + push + PR + merge → 워크트리 정리
 - [ ] ❌: watcher·서버 종료 → 워크트리·브랜치 삭제 → push 0회로 종료
 
+### `--rebuild-remote` 모드 체크리스트
+
+- [ ] 설정 Read + REPO clone/pull (위와 동일)
+- [ ] 워크트리 생성 (`BR=rebuild-${TS}`)
+- [ ] posts.json 로드 → 대상 entries 결정 (slug / all / --category)
+  - 빈 결과 → "대상 없음" 안내 후 종료
+- [ ] `all` 모드면 AskUserQuestion 으로 "총 N개 재빌드합니다. 계속?" 확인
+- [ ] 첫 배포 판단 (index.html 부재 / 템플릿 변경) → 템플릿 다시 입힘
+- [ ] **각 entry 처리**:
+  - SOURCE 결정: (a) `_src/{slug}.{ext}` → (b) html+없음→`extract_original_html.py` → (c) md+없음→skip+경고
+  - 빌더 호출: md→마크다운 변환+`_post-frame.html` 치환 / html→`inject_html_adapter.py`
+  - `originalFilename` 비어있으면 entry 의 `filename`/`title` 으로 추정해 채우기 (마이그레이션)
+  - posts.json 의 `themeInjected`/`sourcePath` 갱신
+- [ ] posts.json Write
+- [ ] 미리보기 서버 시작 + 첫 3개 URL 안내
+- [ ] **AskUserQuestion 승인 게이트** — ✅게시 / ✏️수정 / ❌취소
+- [ ] ✅: `git diff --quiet` 인 entry 는 자동 제외 → commit (메시지: "rebuild: re-apply adapter to N posts") + push + PR + merge → 워크트리 정리
+- [ ] ✏️: 워크트리 두고 안내 후 종료
+- [ ] ❌: 서버 종료 → 워크트리·브랜치 삭제
+
 ---
 
 ## 참고
 
-- 설정: `~/.claude/hams-diary.json` (`{repo, template, pagesUrl?}`)
+- 설정: `~/.claude/hams-diary.json` (`{repo, template, pagesUrl?, features?}`)
 - 템플릿: `${PLUGIN_ROOT}/skills/diary/templates/{minimal|tech|lecture|notebook|magazine}/`
 - HTML 어댑터 빌더: `${PLUGIN_ROOT}/skills/diary/inject_html_adapter.py`
+- HTML 어댑터 역추출: `${PLUGIN_ROOT}/skills/diary/extract_original_html.py` (재빌드 모드 fallback)
 - 편집 모드 워처: `${PLUGIN_ROOT}/skills/diary/watch_and_rebuild.py`
 - 레포 메타: `{REPO}/.diary-meta.json` (현재 적용된 템플릿 기록)
-- 원본 백업: `{REPO}/_src/{slug}.{md|html}` (편집 모드용)
+- 원본 백업: `{REPO}/_src/{slug}.{md|html}` (편집·재빌드 모드용)
