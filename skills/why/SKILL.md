@@ -21,8 +21,65 @@ allowed-tools:
 
 ### 1. 기존 rules 확인
 
-`{project_root}/.hamstern/why/rules/` 폴더가 있으면 기존 원칙들을 읽어 문제와 매칭 시도.
-원칙이 현재 문제의 증상과 직접 일치하면 해당 원칙을 인용하고 조사를 종료합니다. 그렇지 않으면 2단계로 진행합니다.
+다음 두 위치의 룰을 확인한다 (순서대로):
+
+1. `{project_root}/.claude/rules/` — 영구 격상된 룰. 매칭되면 해당 포인터를 인용 + `references/{topic}/rule.md` 를 읽어 적용 가이드 제공 후 조사 종료.
+2. `{project_root}/.hamstern/why/rules/` — 잠정 룰. 매칭되면 **Step 1.5 격상 제안**으로 진행.
+
+**매칭 판정**: 원칙(`**원칙:**` 라인)이 현재 문제 증상과 직접 일치하는가. 단순 키워드 겹침이 아니라 인과적으로 같은 문제인지 판단.
+
+매칭되지 않으면 2단계로 진행.
+
+### 1.5. 격상 제안 (Step 1에서 .hamstern/why/rules 매칭 시만)
+
+매칭된 잠정 룰이 다시 발동했음을 의미 → 영구 격상 적기.
+
+다음 메시지 출력:
+
+```
+🔁 동일 원칙이 재발했습니다.
+   잠정 룰   : .hamstern/why/rules/{topic}.md
+   원칙      : {원칙 한 문장}
+   첫 발견   : {원본의 발견 날짜}
+
+이 룰을 .claude/rules/ 로 영구 격상하시겠습니까?
+```
+
+`AskUserQuestion` 옵션 3개:
+1. **네, 격상합니다** → Step 1.5.1로 진행
+2. **아니오, 이번에도 잠정 유지** → 원본의 history 섹션에 재발 한 줄 append 후 조사 종료
+3. **새로 조사하고 싶어요 (원칙이 다를 수도)** → Step 2로 진행 (정상 흐름)
+
+#### Step 1.5.1: 적용 범위 질문
+
+`/hams:rule add` Step A5 와 동일하게 `AskUserQuestion`으로 전역/특정 경로 선택. 특정 경로면 후속 글로브 입력.
+
+#### Step 1.5.2: 격상 실행
+
+`/hams:rule promote {topic}` Step P5~P10 와 동일한 변환을 인라인으로 수행:
+- 원본 `.hamstern/why/rules/{topic}.md` 읽기 → 타입 자동 판정
+- `./templates/` (rule 스킬의 templates 디렉토리) 의 5개 템플릿을 사용해 다음 파일 Write:
+  - `.claude/rules/{topic}.md` (포인터)
+  - `.claude/rules/references/{topic}/rule.md`
+  - `.claude/rules/references/{topic}/examples.md`
+  - `.claude/rules/references/{topic}/mockup.html` (디자인/둘 다 타입만)
+  - `.claude/rules/references/{topic}/history.md`
+- 원본 `.hamstern/why/rules/{topic}.md` 맨 위(frontmatter 다음 또는 첫 헤딩 직전)에 `> 격상됨 → .claude/rules/{topic}.md ({YYYY-MM-DD})` 마커 Edit 삽입.
+
+> 참고: 템플릿 위치는 hamstern 플러그인 내부 `skills/rule/templates/` 입니다. 동일한 플러그인의 다른 스킬에서 접근하므로 플러그인 루트 기준 경로 (`{plugin_root}/skills/rule/templates/`) 를 사용.
+
+#### Step 1.5.3: 완료 메시지 후 조사 종료
+
+```
+🚀 {topic} 영구 룰로 격상
+   포인터    : .claude/rules/{topic}.md
+   본문      : .claude/rules/references/{topic}/
+   원본 마커 : .hamstern/why/rules/{topic}.md (격상됨 표시)
+
+▶ 다음 세션부터 자동으로 컨텍스트에 로드됩니다.
+```
+
+조사 자체는 종료 (이미 원칙이 알려진 문제이므로 재진단 불필요).
 
 ### 2. 가설 생성
 
@@ -70,6 +127,13 @@ H4 (10%) [가설 설명]
 근본 원인 확정 시 `{project_root}/.hamstern/why/rules/{topic}.md` 에 저장합니다.
 같은 토픽 파일이 있으면 새 원칙을 append합니다.
 
+저장 직후 다음 안내 메시지를 추가로 출력합니다 (사용자에게 격상 흐름을 알려주기 위함):
+
+```
+💡 이 원칙이 재발하면 /hams:why 가 자동으로 .claude/rules/ 로 격상을 제안합니다.
+   지금 바로 격상하고 싶다면 /hams:rule promote {topic}
+```
+
 **파일 형식:**
 ```markdown
 ## [원칙명]
@@ -84,11 +148,13 @@ H4 (10%) [가설 설명]
 
 ### 6. 완료 메시지
 
-CLAUDE.md를 자동으로 수정하지 않습니다. 메시지만 출력합니다.
+`.claude/rules/*.md` 가 자동 로드되므로 CLAUDE.md를 건드리지 않습니다.
 
 ```
-💾 규칙 저장: .hamstern/why/rules/{topic}.md
-📋 CLAUDE.md에 추가하려면 해당 파일을 복사하세요.
+💾 잠정 규칙 저장: .hamstern/why/rules/{topic}.md
+💡 재발 시 자동으로 영구 룰 격상이 제안됩니다.
+   수동 격상     : /hams:rule promote {topic}
+   현재 룰 목록  : /hams:rule list
 ```
 
 ## 맥락
