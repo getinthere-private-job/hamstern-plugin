@@ -2,7 +2,7 @@
 name: start
 description: |
   현재 프로젝트에서 햄스턴을 활성화한다. .hamstern/ 폴더와 baby/mom/boss 하위 폴더를 만들고
-  메타 파일을 초기화한다. 이후 SessionStart·UserPromptSubmit·Stop 후크가 이 프로젝트에서
+  메타 파일을 초기화한다. 이후 UserPromptSubmit·Stop 후크가 이 프로젝트에서
   자동으로 동작한다. 이미 활성된 프로젝트에서 다시 실행하면 .disabled 마커를 제거해 재개한다.
   사용법: /hams:start
 allowed-tools:

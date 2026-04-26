@@ -1,7 +1,7 @@
 """hams-dashboard HTTP 서버
 사용법: python3 server.py [--port 7777] [--project /path/to/project]
 """
-import argparse, json, re, sys, threading
+import argparse, json, re, threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -183,15 +183,7 @@ JSON 배열로만 응답하세요 (코드블록 없이):
         with log_file.open("a", encoding="utf-8") as f:
             f.write(log_entry)
 
-        # CLAUDE.md 주입
-        hooks_dir = Path(__file__).parent.parent.parent / "hooks"
-        sys.path.insert(0, str(hooks_dir))
-        try:
-            from inject_decisions import inject_decisions
-            inject_decisions(str(decisions_file), str(root / "CLAUDE.md"))
-        except Exception:
-            pass
-
+        # CLAUDE.md 에는 쓰지 않음 — 사용자가 /hams:remind 로 명시적 환기.
         self._json({"status": "ok"})
 
     def _handle_boss_unpin(self, decision_id):

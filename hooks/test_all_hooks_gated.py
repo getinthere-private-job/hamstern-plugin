@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 HOOKS_DIR = Path(__file__).parent
-HOOKS = ["session_start.py", "user_prompt.py", "stop.py"]
+HOOKS = ["user_prompt.py", "stop.py"]
 
 
 def _run(hook_name, payload, cwd):
@@ -67,25 +67,3 @@ def test_user_prompt_records_when_active(tmp_path):
     assert "hello hamstern" in baby.read_text(encoding="utf-8")
 
 
-def test_session_start_injects_when_active(tmp_path):
-    (tmp_path / ".hamstern" / "boss-hamster").mkdir(parents=True)
-    decisions = tmp_path / ".hamstern" / "boss-hamster" / "decisions.md"
-    decisions.write_text("# 핵심 결정", encoding="utf-8")
-    payload = {"session_id": "x", "source": "startup", "cwd": str(tmp_path)}
-    result = _run("session_start.py", payload, str(tmp_path))
-    assert result.returncode == 0
-    claude_md = tmp_path / "CLAUDE.md"
-    assert claude_md.exists()
-    assert "핵심 결정" in claude_md.read_text(encoding="utf-8")
-
-
-def test_session_start_defers_when_app_running(tmp_path):
-    (tmp_path / ".hamstern" / "boss-hamster").mkdir(parents=True)
-    (tmp_path / ".hamstern" / ".app-running").write_text("")
-    decisions = tmp_path / ".hamstern" / "boss-hamster" / "decisions.md"
-    decisions.write_text("# Should not be injected by plugin", encoding="utf-8")
-    payload = {"session_id": "x", "source": "startup", "cwd": str(tmp_path)}
-    result = _run("session_start.py", payload, str(tmp_path))
-    assert result.returncode == 0
-    # cmux 툴이 실행 중일 땐 플러그인이 양보 — CLAUDE.md 미생성
-    assert not (tmp_path / "CLAUDE.md").exists()

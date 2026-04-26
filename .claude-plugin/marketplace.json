@@ -17,7 +17,7 @@
         "./skills/dashboard",
         "./skills/audit-decisions",
         "./skills/registry-collector",
-        "./skills/context",
+        "./skills/remind",
         "./skills/why",
         "./skills/diary",
         "./skills/start",
