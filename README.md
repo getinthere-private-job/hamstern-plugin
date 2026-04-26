@@ -241,3 +241,77 @@ DB·서버 추가 없이 두 가지를 켤 수 있다. 둘 다 기본 OFF.
 ## 더 자세한 동작·확장 백로그
 
 전체 내부 체크리스트, 에러 처리, 강의자료 향후 확장 항목(시리즈 그룹핑·공개 토글·선수 학습 링크·slide 모드·자동 ToC·댓글) 은 [`skills/diary/SKILL.md`](skills/diary/SKILL.md) 참조.
+
+---
+
+## 📝 변경 내역 (Changelog)
+
+> 버전 관리는 git commit SHA 로 한다 (`/plugin update hams` 가 매 커밋마다 새 버전으로 인식). 아래는 사용자 관점의 굵직한 변화만 정리.
+
+### 2026-04-26 — 검색·댓글 통합 (opt-in)
+
+- `--enable-search` / `--disable-search` 추가 — Pagefind 풀텍스트 검색
+  ```bash
+  /hams-diary --enable-search
+  /hams-diary ./new-post.md 강의   # 다음 배포부터 모든 포스트 자동 인덱싱
+  ```
+  홈에 검색창 자동 생성. Node.js 18+ 필요. DB 0개.
+- `--enable-comments` / `--disable-comments` 추가 — giscus(GitHub Discussions) 댓글
+  ```bash
+  /hams-diary --enable-comments    # 대화형 — giscus.app 의 4개 data-* 값 입력
+  ```
+  포스트 하단에 자동 임베드. 라이트/다크 토글과 동기화.
+- `~/.claude/hams-diary.json` 에 `features` 객체 추가 (`{search, comments}`).
+
+### 2026-04-26 — HTML 시뮬레이터 양방향 톤 변환
+
+- 빌드 시 원본 HTML 의 dominant background 를 자동 감지 (`data-osd-source-theme`)
+- 다크 원본 → 라이트 모드, **라이트 원본 → 다크 모드** 모두 자동 변환 (이전엔 다크→라이트만)
+- 톤이 같으면 필터를 적용하지 않아 원본 색상 보존
+
+### 2026-04-26 — 편집 모드 (`--edit`)
+
+- `/hams-diary --edit {slug}` 신설 — 기존 포스트 한 글자 고치는 데 30초
+  ```bash
+  /hams-diary --edit msa-k8s-websocket
+  #  → 에디터로 _src/{slug}.{ext} 자동 오픈
+  #  → 미리보기 서버 + 브라우저 자동 표시
+  #  → 저장할 때마다 watcher 가 자동 재빌드 ([HH:MM:SS] rebuilt 출력)
+  #  → 만족하면 ✅ 게시 / ❌ 취소
+  ```
+- 배포 시 원본을 `_src/{slug}.{ext}` 로 백업 (편집 모드의 진실의 원본)
+- `posts.json` 에 `sourcePath` 필드 추가
+- `watch_and_rebuild.py` helper 추가 (mtime polling)
+
+### 2026-04-26 — 3가지 배포 모드 + 미리보기 승인 게이트 + 5템플릿 (대규모 재설계)
+
+이전: MD 파일 1개를 즉시 push 하는 단방향 파이프라인.
+이후:
+
+- **3가지 입력 모드**: MD 1개 / HTML 시뮬레이터 1개 / 폴더·글롭 일괄
+- **목업 → 승인 게이트**: 푸시 전 `python -m http.server 8765` + 브라우저 자동 오픈, ✅게시 / ✏️수정 / ❌취소 선택
+- **5가지 디자인 템플릿**: `minimal`, `tech`(default), `lecture`, `notebook`, `magazine` — `--set-template {1-5|name}` 으로 변경
+- **중복 자동 제외**: 배치 모드에서 같은 slug 는 skip (`--overwrite` 로 강제)
+- **HTML 시뮬레이터 어댑터**: 풀-너비 + 라이트/다크 토글 + 플로팅 네비 바 자동 주입 (`--no-theme` 으로 끄기)
+- **새 플래그**: `--no-theme`, `--overwrite`, `--draft`, `--preview-port`
+- `inject_html_adapter.py` helper 추가 (HTML 빌드 책임 분리)
+- 한글 파일명 처리: PowerShell `Get-ChildItem -LiteralPath` + ASCII slug 임시 복사 폴백
+
+### 그 외
+
+- `marketplace.json` 에 `./skills/diary` 등록 누락 수정
+- SKILL.md 의 `name: hams-diary` → `name: diary` 정정 (플러그인 시스템이 자동으로 `hams-` prefix 추가)
+- README 가 의사결정 분석 노트뿐이던 상태에서 `/hams-diary` 사용 가이드를 갖춘 본격 README 로 정리
+
+---
+
+## 향후 후보 (백로그)
+
+- **시리즈 그룹핑** — `series` 필드로 강의 주차 묶음 자동 인덱스
+- **공개 토글** — `published: false` 로 게시 후 미공개 (선공개 가능)
+- **선수 학습 링크** — `prereq: ["slug"]` 로 다른 포스트 참조
+- **slide 모드** — `?mode=slide` 발표용 풀스크린 변환
+- **자동 ToC** — H2/H3 구조에서 우측 sticky 목차 (notebook 템플릿)
+- **진도 추적·퀴즈** — 이 단계가 되면 비로소 Supabase 같은 DB 도입 정당화
+
+자세한 향후 확장 백로그는 [`skills/diary/SKILL.md`](skills/diary/SKILL.md) 의 "강의자료 특화 향후 확장" 섹션 참조.
