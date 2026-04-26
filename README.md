@@ -343,7 +343,7 @@ DB·서버 추가 없이 두 가지가 기본 ON 으로 동작한다. 검색은 
 /hams:diary config comments off    # 끄기 (이미 단 댓글은 GitHub 에 그대로 보존)
 ```
 
-설정 끝나면 publish/edit/--rebuild 모두 자동으로 댓글 블록 포함 (라이트/다크 토글 동기화).
+설정 끝나면 publish/edit/--rebuild 모두 자동으로 댓글 블록 포함 — **OS prefers-color-scheme 무시, 블로그 테마 토글과 동기**. iframe 첫 페인트부터 정확 (script 동적 생성 + iframe ready hook + toggle 콜백).
 
 ### 의존성 한눈에
 
@@ -405,6 +405,12 @@ DB·서버 추가 없이 두 가지가 기본 ON 으로 동작한다. 검색은 
 > 버전 관리는 git commit SHA 로 한다 (`/plugin update hams` 가 매 커밋마다 새 버전으로 인식). 아래는 사용자 관점의 굵직한 변화만 정리.
 >
 > ⚠️ 옛 항목의 명령어 예시(`--enable-search`, `--rebuild-remote`, `--edit` 등 단독 플래그 형태)는 **폐기된 표기**입니다. 현재 사용법은 위 본문 또는 `/hams:diary option` 참조.
+
+### 2026-04-27 — diary 어댑터: 시뮬레이터 세로 스크롤 + giscus 테마/디자인 정정
+
+- **세로 스크롤 회복** — 어댑터가 시뮬레이터의 `html, body { height: 100%; overflow: hidden }` viewport 잠금을 override 로 풀어줌 (`overflow-y: auto !important; height: auto !important`). floating bar / 댓글이 viewport 밖으로 밀려나지 않고 페이지가 자연스럽게 스크롤됨. 향후 자체 스크롤 위젯이 깨지는 케이스 대비 `--lock-viewport` 옵션은 백로그
+- **giscus 테마: OS 무시, 블로그 토글 따라감** — `data-theme` 을 빌드 시점에 고정하지 않고 페이지 로드 시 `localStorage('blog-theme')` 기반으로 결정. script 를 동적 생성 → iframe 첫 페인트부터 블로그 테마와 일치. iframe ready 메시지 hook + 블로그 토글 콜백 둘 다 유지 (3 단계 보호)
+- **댓글 섹션 디자인 정정 (옵션 C)** — "💬 댓글" 큰 헤더 → 작은 uppercase "토론" 헤더, 폭 900px → 800px, border-top 1px + 다크/라이트 톤 살짝 패널 (rgba 기반). 블로그 톤과 자연스럽게 어울림
 
 ### 2026-04-27 — diary 어댑터에 `--fit-viewport` / `--scale-up` 폭 모드 추가
 

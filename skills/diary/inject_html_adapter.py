@@ -38,6 +38,16 @@ ADAPTER_STYLE_FULL = r"""
      margin: 0 auto } it stays centered; if it has none, it stays full-width. */
   body { padding-top: 56px !important; }
 
+  /* Allow page to grow naturally — many simulators set
+     html, body { height:100%; overflow:hidden } to lock viewport. The adapter
+     overrides this so floating bar + appended comments are reachable via scroll. */
+  html, body {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+    overflow-y: auto !important;
+  }
+
   /* Bidirectional inversion: applied only when the source tone differs from
      the selected blog theme. If they match, the original colors are kept
      untouched. The wrapper isolates the filter from the floating bar. */
@@ -115,6 +125,13 @@ ADAPTER_STYLE_NOTHEME = r"""
 <style id="osd-theme-adapter">
   /* Reserve space for the floating bar — simulator's own width is preserved */
   body { padding-top: 56px !important; }
+  /* Override viewport-lock that some simulators set so page can scroll */
+  html, body {
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+    overflow-y: auto !important;
+  }
   #osd-bar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 2147483647;
     display: flex; align-items: center; justify-content: space-between;
@@ -284,36 +301,92 @@ GISCUS_MARKER_END = '<!-- hamstern:comments:end -->'
 def make_giscus_block(repo: str, repo_id: str, category: str, category_id: str,
                       mapping: str = 'pathname', theme: str = 'preferred_color_scheme',
                       lang: str = 'ko') -> str:
+    """Build the giscus comments block.
+
+    Note: the `theme` parameter is kept for API compatibility but ignored — the
+    actual theme is decided at runtime from localStorage('blog-theme') /
+    data-osd-theme so the iframe always matches the blog (not the OS).
+    Design: option C — small uppercase '토론' header, border-top, subtle
+    dark/light tinted panel, max-width 800px.
+    """
     return f'''
   {GISCUS_MARKER_START}
-  <section class="osd-comments" style="max-width: 900px; margin: 32px auto; padding: 0 24px;">
-    <h3 style="font-size: 18px; color: var(--text, #e8eef9); margin: 0 0 12px;">💬 댓글</h3>
-    <script src="https://giscus.app/client.js"
-            data-repo="{repo}"
-            data-repo-id="{repo_id}"
-            data-category="{category}"
-            data-category-id="{category_id}"
-            data-mapping="{mapping}"
-            data-strict="0"
-            data-reactions-enabled="1"
-            data-emit-metadata="0"
-            data-input-position="bottom"
-            data-theme="{theme}"
-            data-lang="{lang}"
-            crossorigin="anonymous"
-            async></script>
+  <style id="osd-comments-style">
+    .osd-comments {{
+      max-width: 800px;
+      margin: 56px auto 40px;
+      padding: 28px 24px 32px;
+      border-top: 1px solid rgba(127,127,127,0.18);
+      border-radius: 8px;
+    }}
+    html[data-osd-theme="light"] .osd-comments {{
+      background: rgba(0,0,0,0.025);
+      border-top-color: rgba(0,0,0,0.10);
+    }}
+    html[data-osd-theme="dark"] .osd-comments,
+    html:not([data-osd-theme]) .osd-comments {{
+      background: rgba(255,255,255,0.03);
+      border-top-color: rgba(255,255,255,0.08);
+    }}
+    .osd-comments__h {{
+      font: 600 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI",
+            "Pretendard", "Noto Sans KR", sans-serif;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin: 0 0 16px;
+      color: rgba(127,127,127,0.85);
+    }}
+  </style>
+  <section class="osd-comments" aria-label="comments">
+    <h4 class="osd-comments__h">토론</h4>
+    <div id="osd-giscus-mount"></div>
   </section>
   <script>
     (function(){{
-      var orig = window.__osdSetTheme || function(){{}};
-      window.__osdSetTheme = function(t){{
-        orig(t);
+      function getTheme(){{
+        try {{
+          return localStorage.getItem('blog-theme')
+            || document.documentElement.getAttribute('data-osd-theme')
+            || 'dark';
+        }} catch(e){{ return 'dark'; }}
+      }}
+      function emit(t){{
         var iframe = document.querySelector('iframe.giscus-frame');
-        if (iframe) iframe.contentWindow.postMessage(
-          {{ giscus: {{ setConfig: {{ theme: t === 'dark' ? 'dark' : 'light' }} }} }},
-          'https://giscus.app'
-        );
-      }};
+        if (iframe && iframe.contentWindow) {{
+          iframe.contentWindow.postMessage(
+            {{ giscus: {{ setConfig: {{ theme: t === 'dark' ? 'dark' : 'light' }} }} }},
+            'https://giscus.app'
+          );
+        }}
+      }}
+
+      // (1) script 동적 생성 — 첫 페인트부터 블로그 테마 적용 (OS 무시)
+      var s = document.createElement('script');
+      s.src = 'https://giscus.app/client.js';
+      s.setAttribute('data-repo', '{repo}');
+      s.setAttribute('data-repo-id', '{repo_id}');
+      s.setAttribute('data-category', '{category}');
+      s.setAttribute('data-category-id', '{category_id}');
+      s.setAttribute('data-mapping', '{mapping}');
+      s.setAttribute('data-strict', '0');
+      s.setAttribute('data-reactions-enabled', '1');
+      s.setAttribute('data-emit-metadata', '0');
+      s.setAttribute('data-input-position', 'bottom');
+      s.setAttribute('data-theme', getTheme() === 'light' ? 'light' : 'dark');
+      s.setAttribute('data-lang', '{lang}');
+      s.crossOrigin = 'anonymous';
+      s.async = true;
+      document.getElementById('osd-giscus-mount').appendChild(s);
+
+      // (2) iframe ready 시 한번 더 동기화 (보호장치)
+      window.addEventListener('message', function(e){{
+        if (e.origin !== 'https://giscus.app') return;
+        emit(getTheme());
+      }});
+
+      // (3) 블로그 테마 토글 시 동기화
+      var orig = window.__osdSetTheme || function(){{}};
+      window.__osdSetTheme = function(t){{ orig(t); emit(t); }};
     }})();
   </script>
   {GISCUS_MARKER_END}

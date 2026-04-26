@@ -587,36 +587,69 @@ posts.json 의 두 필드에 기록:
 **MD 엔진**: `_post-frame.html` 의 `{{COMMENTS_BLOCK}}` 자리에 치환.
 **HTML 엔진**: 어댑터의 `--comments-repo / --repo-id / --category / --category-id` 인자로 전달 → `</body>` 직전 `<!-- hamstern:comments:start --> ... :end -->` 마커 블록으로 주입 (idempotent).
 
-조건 충족 시 (MD 엔진 치환 결과 / HTML 어댑터 주입 결과 동일 형태):
+조건 충족 시 emit 되는 블록 형태 (디자인: 옵션 C — 간소 헤더 + border-top + 다크/라이트 톤 패널):
 ```html
-<section class="comments">
-  <h3>💬 토론</h3>
-  <script src="https://giscus.app/client.js"
-          data-repo="{{COMMENTS_REPO}}"
-          data-repo-id="{{COMMENTS_REPO_ID}}"
-          data-category="{{COMMENTS_CATEGORY}}"
-          data-category-id="{{COMMENTS_CATEGORY_ID}}"
-          data-mapping="pathname" data-strict="0"
-          data-reactions-enabled="1" data-emit-metadata="0"
-          data-input-position="bottom"
-          data-theme="preferred_color_scheme" data-lang="ko"
-          crossorigin="anonymous" async></script>
+<style id="osd-comments-style">
+  .osd-comments { max-width: 800px; margin: 56px auto 40px; padding: 28px 24px 32px;
+                  border-top: 1px solid rgba(127,127,127,0.18); border-radius: 8px; }
+  html[data-osd-theme="light"] .osd-comments { background: rgba(0,0,0,0.025); border-top-color: rgba(0,0,0,0.10); }
+  html[data-osd-theme="dark"]  .osd-comments,
+  html:not([data-osd-theme])   .osd-comments { background: rgba(255,255,255,0.03); border-top-color: rgba(255,255,255,0.08); }
+  .osd-comments__h { font: 600 13px/1.4 -apple-system, ...; letter-spacing: 1.2px;
+                     text-transform: uppercase; margin: 0 0 16px; color: rgba(127,127,127,0.85); }
+</style>
+<section class="osd-comments" aria-label="comments">
+  <h4 class="osd-comments__h">토론</h4>
+  <div id="osd-giscus-mount"></div>
 </section>
 <script>
-  // 블로그 테마 토글 시 giscus iframe 도 동기화
-  (function(){
-    var orig = window.__osdSetTheme || function(){};
-    window.__osdSetTheme = function(t){
-      orig(t);
-      var iframe = document.querySelector('iframe.giscus-frame');
-      if (iframe) iframe.contentWindow.postMessage(
+(function(){
+  function getTheme(){
+    try { return localStorage.getItem('blog-theme')
+              || document.documentElement.getAttribute('data-osd-theme')
+              || 'dark'; } catch(e){ return 'dark'; }
+  }
+  function emit(t){
+    var iframe = document.querySelector('iframe.giscus-frame');
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage(
         { giscus: { setConfig: { theme: t === 'dark' ? 'dark' : 'light' } } },
         'https://giscus.app'
       );
-    };
-  })();
+    }
+  }
+  // (1) script 동적 생성 — 첫 페인트부터 블로그 테마 적용 (OS 무시)
+  var s = document.createElement('script');
+  s.src = 'https://giscus.app/client.js';
+  s.setAttribute('data-repo', '{{COMMENTS_REPO}}');
+  s.setAttribute('data-repo-id', '{{COMMENTS_REPO_ID}}');
+  s.setAttribute('data-category', '{{COMMENTS_CATEGORY}}');
+  s.setAttribute('data-category-id', '{{COMMENTS_CATEGORY_ID}}');
+  s.setAttribute('data-mapping', 'pathname');
+  s.setAttribute('data-strict', '0');
+  s.setAttribute('data-reactions-enabled', '1');
+  s.setAttribute('data-emit-metadata', '0');
+  s.setAttribute('data-input-position', 'bottom');
+  s.setAttribute('data-theme', getTheme() === 'light' ? 'light' : 'dark');
+  s.setAttribute('data-lang', 'ko');
+  s.crossOrigin = 'anonymous';
+  s.async = true;
+  document.getElementById('osd-giscus-mount').appendChild(s);
+
+  // (2) iframe ready 시 한번 더 동기화 (보호장치)
+  window.addEventListener('message', function(e){
+    if (e.origin !== 'https://giscus.app') return;
+    emit(getTheme());
+  });
+
+  // (3) 블로그 테마 토글 시 동기화
+  var orig = window.__osdSetTheme || function(){};
+  window.__osdSetTheme = function(t){ orig(t); emit(t); };
+})();
 </script>
 ```
+
+**테마 동기화 정책**: `data-theme` 을 빌드 시 고정하지 않고 페이지 로드 시점에 `localStorage('blog-theme')` 우선, 없으면 `data-osd-theme` attribute → 'dark' 폴백. **OS prefers-color-scheme 무시** — 블로그 토글이 진실의 소스. (3) 단계로 toggle 즉시 반영, (2) 단계로 iframe ready 시 한번 더 보장.
 
 조건 미충족 (`enabled === false` 또는 4 개 값 중 하나라도 비어있음):
 ```html
