@@ -20,6 +20,7 @@
         "./skills/registry-collector",
         "./skills/remind",
         "./skills/why",
+        "./skills/rule",
         "./skills/diary",
         "./skills/start",
         "./skills/stop",
