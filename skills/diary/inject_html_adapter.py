@@ -4,20 +4,24 @@ inject_html_adapter.py — Open Skill Diary HTML simulator adapter
 
 Reads an arbitrary HTML file (typically a dark-themed simulator) and writes
 a transformed copy that:
-  - Removes max-width constraints so the simulator fills the viewport
+  - Preserves the simulator's own max-width / centering — adapter does NOT
+    override layout widths. If the simulator has .container { max-width: ...;
+    margin: 0 auto } it remains centered; if not, it stays full-width.
   - Wraps body content in #osd-content-wrapper so a CSS filter can produce a
     light-mode variant on demand without touching simulator-internal styles
   - Injects a floating navigation bar (back to blog + theme toggle) that
     sits above the inverted region (z-index: 2147483647)
   - Persists theme via localStorage('blog-theme'), shared with the host blog
+  - Optionally appends a giscus comments block before </body> when all four
+    --comments-* args are provided
 
 Usage:
     python inject_html_adapter.py --src <input.html> --dst <output.html> --title "..."
     python inject_html_adapter.py --src-dir <dir> --dst-dir <posts/> [--map JSON]
     python inject_html_adapter.py --src <in.html> --dst <out.html> --title "..." --no-theme
 
-When --no-theme is set, only the full-width override + floating bar are
-injected (no light/dark filter). The simulator keeps its original colors.
+When --no-theme is set, only the floating bar (with body padding-top to make
+room) is injected. The simulator keeps its original colors and width.
 """
 
 import argparse
@@ -29,14 +33,10 @@ import sys
 ADAPTER_STYLE_FULL = r"""
 <!-- ======= Open Skill Diary theme adapter (injected) ======= -->
 <style id="osd-theme-adapter">
-  /* Full-width override: clear max-width on common layout containers */
-  html, body { max-width: 100% !important; }
+  /* Reserve space for the floating bar — adapter does NOT touch the simulator's
+     own max-width / centering. If the simulator has .container { max-width: ...;
+     margin: 0 auto } it stays centered; if it has none, it stays full-width. */
   body { padding-top: 56px !important; }
-  .layout, .simulator, .container, main, .wrap, .wrapper, .page, .app, .root,
-  [class*="container"], [class*="wrapper"] {
-    max-width: 100% !important;
-    width: 100% !important;
-  }
 
   /* Bidirectional inversion: applied only when the source tone differs from
      the selected blog theme. If they match, the original colors are kept
@@ -109,17 +109,12 @@ ADAPTER_STYLE_FULL = r"""
 <!-- ======= /theme adapter ======= -->
 """
 
-# Lite version: only full-width + floating bar, no filter inversion
+# Lite version: only floating bar + bar spacing, no filter inversion, no width override
 ADAPTER_STYLE_NOTHEME = r"""
 <!-- ======= Open Skill Diary adapter (no-theme) ======= -->
 <style id="osd-theme-adapter">
-  html, body { max-width: 100% !important; }
+  /* Reserve space for the floating bar — simulator's own width is preserved */
   body { padding-top: 56px !important; }
-  .layout, .simulator, .container, main, .wrap, .wrapper, .page, .app, .root,
-  [class*="container"], [class*="wrapper"] {
-    max-width: 100% !important;
-    width: 100% !important;
-  }
   #osd-bar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 2147483647;
     display: flex; align-items: center; justify-content: space-between;

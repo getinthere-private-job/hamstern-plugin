@@ -261,7 +261,7 @@ DB·서버 추가 없이 두 가지가 기본 ON 으로 동작한다. 검색은 
 
 다크 전용으로 작성된 HTML 시뮬레이터도 그대로 던져넣으면 다음이 자동 처리된다.
 
-- **풀 너비** — `max-width` 제약 제거 → 시뮬레이션이 화면 전체 사용
+- **시뮬레이터 자체 폭 보존** — 어댑터가 시뮬레이터 스타일을 손대지 않음. 자체 `.container { max-width: ...; margin: 0 auto }` 가 있으면 가운데 정렬, 없으면 풀너비 (작성자 의도 그대로)
 - **라이트/다크 토글** — `localStorage('blog-theme')` 으로 블로그 테마와 동기화
 - **원본 톤 자동 감지** — 빌드 시점에 원본 HTML 의 dominant background 를 보고 `light` / `dark` 로 분류 (`data-osd-source-theme`). 라이트 톤 원본(예: 베이지)도 자동 인식
 - **양방향 변환** — 원본 톤과 사용자 선택 테마가 다를 때만 `filter: invert + hue-rotate` 적용. 다크 원본 ↔ 라이트 모드, 라이트 원본 ↔ 다크 모드 모두 자동 변환되고, 톤이 같으면 원본 색상 그대로 유지 (이미지/SVG/캔버스는 역-필터로 원색 유지)
@@ -308,6 +308,14 @@ DB·서버 추가 없이 두 가지가 기본 ON 으로 동작한다. 검색은 
 > 버전 관리는 git commit SHA 로 한다 (`/plugin update hams` 가 매 커밋마다 새 버전으로 인식). 아래는 사용자 관점의 굵직한 변화만 정리.
 >
 > ⚠️ 옛 항목의 명령어 예시(`--enable-search`, `--rebuild-remote`, `--edit` 등 단독 플래그 형태)는 **폐기된 표기**입니다. 현재 사용법은 위 본문 또는 `/hams:diary option` 참조.
+
+### 2026-04-26 — diary 어댑터: 강제 풀너비 → 시뮬레이터 자체 폭 보존
+
+- `inject_html_adapter.py` 의 `max-width: 100% !important` 강제 override 제거 (full / no-theme 두 모드 모두)
+- 시뮬레이터에 자체 `.container { max-width: ...; margin: 0 auto }` 가 있으면 자동 가운데 정렬, 없으면 풀너비 — 작성자 의도 보존
+- 처음 풀너비를 강제했던 이유 (외부 wrapper 좁은 박스에 갇혀 깨짐) 는 사실상 발생 안 함 — HTML 시뮬레이터는 `_post-frame.html` 셸을 안 쓰고 어댑터만 주입되는 구조라 외부 wrapper 자체가 없음
+- floating bar 를 위한 `body { padding-top: 56px }` 와 라이트/다크 invert filter 는 그대로 유지
+- 기존 사이트 적용은 `/hams:diary publish --rebuild all` 한 번
 
 ### 2026-04-26 — `/hams:diary giscus` 별도 진입점 + 댓글 디폴트 OFF 환원
 
