@@ -28,7 +28,7 @@ allowed-tools:
 1. **로컬 우선** — 글은 자기 컴퓨터의 `.md` 파일로 살아있고, 블로그는 그 출력물.
 2. **목업 후 게시** — 로컬에서 미리보기 서버 → 브라우저 검수 → 승인 → push.
 3. **5가지 디자인** — `minimal` / `tech` / `lecture` / `notebook` / `magazine` 중 한 줄 명령으로 변경.
-4. **DB 없이 풍부한 기능** — opt-in 검색(Pagefind) · 댓글(giscus) · 라이트/다크 자동 변환 · 한글 파일명 안전 처리.
+4. **DB 없이 풍부한 기능** — 검색(Pagefind, 기본 ON) · 댓글(giscus, enabled 기본 ON 이지만 4개 data-* 값 등록 필요) · 라이트/다크 자동 변환 · 한글 파일명 안전 처리.
 
 ---
 
@@ -116,7 +116,7 @@ allowed-tools:
       "template": "tech",
       "blogTitle": "기술 노트",
       "pagesUrl": "https://...",
-      "features": { "search": false, "comments": { "enabled": false } }
+      "features": { "search": true, "comments": { "enabled": true } }
     }
   }
 }
@@ -141,7 +141,7 @@ if os.path.exists(p):
 **파일이 없는 경우** (publish/edit/config 호출 시): AskUserQuestion으로 첫 프로파일 repo URL 받아 다음으로 초기화:
 
 ```json
-{ "active": "default", "profiles": { "default": { "repo": "<URL>", "template": "tech" } } }
+{ "active": "default", "profiles": { "default": { "repo": "<URL>", "template": "tech", "features": { "search": true, "comments": { "enabled": true } } } } }
 ```
 
 `option` 호출 시에는 파일 없어도 안내만 출력 (초기화 안 함).
@@ -251,8 +251,8 @@ if os.path.exists(p):
     repo:        <P.repo>
     template:    <P.template>
     blogTitle:   <P.blogTitle 또는 (미설정)>
-    search:      <on|off>
-    comments:    <on|off>
+    search:      <on|off> (기본 on)
+    comments:    <on|off> (기본 on, giscus 4개 값 등록 시 노출)
 
 💾 옛 flat 형태({repo, template, ...})는 첫 호출 시 자동으로 default 프로파일로 변환되며 ~/.claude/hams-diary.json.bak 에 백업됩니다.
 
@@ -279,7 +279,7 @@ if os.path.exists(p):
 | `PAGES_URL` | `P['pagesUrl']` 또는 `https://${OWNER}.github.io/${NAME}/` |
 | `TEMPLATE` | `P['template']` (기본 `tech`) |
 | `BLOG_TITLE` | `P['blogTitle']` (없으면 첫 배포 시 AskUserQuestion으로 받아 P에 저장) |
-| `FEATURES` | `P['features']` (없으면 `{search: false, comments: {enabled: false}}`) |
+| `FEATURES` | `P['features']` (없으면 `{search: true, comments: {enabled: true}}` — 디폴트 ON) |
 | `LOCAL_DIR` | `/tmp/${REPO_NAME}-${PROFILE_NAME}` (프로파일별 분리) |
 | `WORKTREE_DIR` | `/tmp/${REPO_NAME}-${PROFILE_NAME}-preview-${TS}` |
 
@@ -493,7 +493,14 @@ posts.json 의 두 필드에 기록:
 
 ### `{{COMMENTS_BLOCK}}` (_post-frame.html 안, 본문 직후)
 
-`features.comments.enabled === true`:
+조건: `features.comments.enabled === true` **AND** 4 개 data-* 값 (`repo`, `repoId`, `category`, `categoryId`) 이 모두 채워져 있을 때만 giscus iframe 을 emit. 디폴트는 `enabled: true` 지만 4 개 값은 `config comments on` 으로 별도 등록해야 채워진다 — 미등록 상태에선 emit 보류 + 빌드 로그에 안내문 1 회 출력:
+
+```
+ℹ️  features.comments.enabled=true 이지만 giscus.app 4 개 값이 비어 있어 댓글 영역은 emit 보류됐습니다.
+   /hams:diary config comments on 으로 등록하세요.
+```
+
+조건 충족 시:
 ```html
 <section class="comments">
   <h3>💬 토론</h3>
@@ -524,7 +531,7 @@ posts.json 의 두 필드에 기록:
 </script>
 ```
 
-`features.comments.enabled === false`:
+조건 미충족 (`enabled === false` 또는 4 개 값 중 하나라도 비어있음):
 ```html
 <!-- comments disabled -->
 ```
