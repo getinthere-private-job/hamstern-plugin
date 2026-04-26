@@ -406,6 +406,14 @@ DB·서버 추가 없이 두 가지가 기본 ON 으로 동작한다. 검색은 
 >
 > ⚠️ 옛 항목의 명령어 예시(`--enable-search`, `--rebuild-remote`, `--edit` 등 단독 플래그 형태)는 **폐기된 표기**입니다. 현재 사용법은 위 본문 또는 `/hams:diary option` 참조.
 
+### 2026-04-27 — `strip_giscus.py` 일회용 유틸 (이미 발행된 포스트에서 댓글 블록 제거)
+
+- `skills/diary/strip_giscus.py` 신규 — 이미 배포된 `posts/*.html` 에서 `<!-- hamstern:comments:start --> ... :end -->` 마커 구간을 일괄 삭제하는 일회용 스크립트
+- 사용법: `python skills/diary/strip_giscus.py <BLOG_REPO>/posts [--dry-run]`
+- 배경: `config comments off` 는 **앞으로의** publish/rebuild 에서만 giscus 미주입. 이미 배포된 정적 HTML 에 박힌 giscus 블록은 그대로 남음. 그 갭을 이 유틸이 메움
+- 어댑터의 idempotent 마커 설계(`inject_html_adapter.py:280-281`) 에 의존 — 마커 사이만 정확히 잘라내고 본문/시뮬레이터/themed 스타일은 그대로
+- 댓글 OFF 통합 흐름: ① `config comments off` (또는 `.diary-meta.json` 의 `features.comments.enabled: false`) → ② `strip_giscus.py` 실행 → ③ commit · push
+
 ### 2026-04-27 — diary 어댑터: 시뮬레이터 세로 스크롤 + giscus 테마/디자인 정정
 
 - **세로 스크롤 회복** — 어댑터가 시뮬레이터의 `html, body { height: 100%; overflow: hidden }` viewport 잠금을 override 로 풀어줌 (`overflow-y: auto !important; height: auto !important`). floating bar / 댓글이 viewport 밖으로 밀려나지 않고 페이지가 자연스럽게 스크롤됨. 향후 자체 스크롤 위젯이 깨지는 케이스 대비 `--lock-viewport` 옵션은 백로그
