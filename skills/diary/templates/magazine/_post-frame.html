@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>{{POST_TITLE}} — {{BLOG_TITLE}}</title>
-<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../../assets/style.css" />
 <style>
   .mag-article { max-width: 760px; margin: 0 auto; padding: 56px 32px 96px; }
   .mag-article .back { font-family: var(--sans); font-size: 12px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; display: inline-block; margin-bottom: 18px; }
@@ -24,14 +24,13 @@
 </head>
 <body>
 <article class="mag-article">
-  <a class="back" href="../index.html">← {{BLOG_TITLE}}</a>
+  <a class="back" href="../../index.html">← {{BLOG_TITLE}}</a>
   <div class="cat">{{POST_CATEGORY}}</div>
   <h1>{{POST_TITLE}}</h1>
   <div class="meta"><time>{{POST_DATE}}</time></div>
   <div class="body">
 {{POST_HTML}}
   </div>
-  {{COMMENTS_BLOCK}}
 </article>
 </body>
 </html>

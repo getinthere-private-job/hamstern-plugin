@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>{{POST_TITLE}} — {{BLOG_TITLE}}</title>
-<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../../assets/style.css" />
 <style>
   .lec-article { max-width: 820px; margin: 0 auto; padding: 56px 32px 96px; }
   .lec-article .meta { font-size: 12px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 14px; }
@@ -22,13 +22,12 @@
 </head>
 <body>
 <article class="lec-article">
-  <a class="back" href="../index.html">← {{BLOG_TITLE}}</a>
+  <a class="back" href="../../index.html">← {{BLOG_TITLE}}</a>
   <div class="meta">{{POST_CATEGORY}} · <time>{{POST_DATE}}</time></div>
   <h1>{{POST_TITLE}}</h1>
   <div class="body">
 {{POST_HTML}}
   </div>
-  {{COMMENTS_BLOCK}}
 </article>
 </body>
 </html>

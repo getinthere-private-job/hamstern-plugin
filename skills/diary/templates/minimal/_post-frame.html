@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>{{POST_TITLE}} — {{BLOG_TITLE}}</title>
-<link rel="stylesheet" href="../assets/style.css" />
+<link rel="stylesheet" href="../../assets/style.css" />
 <style>
   .article { max-width: 720px; margin: 0 auto; padding: 56px 24px 96px; }
   .article h1 { font-size: clamp(26px, 4vw, 38px); letter-spacing: -1px; line-height: 1.2; margin: 16px 0; }
@@ -23,14 +23,13 @@
 </head>
 <body>
 <article class="article">
-  <a class="back" href="../index.html">← {{BLOG_TITLE}}</a>
+  <a class="back" href="../../index.html">← {{BLOG_TITLE}}</a>
   <span class="post-item__category">{{POST_CATEGORY}}</span>
   <h1>{{POST_TITLE}}</h1>
   <div class="meta"><time>{{POST_DATE}}</time></div>
   <div class="body">
 {{POST_HTML}}
   </div>
-  {{COMMENTS_BLOCK}}
 </article>
 </body>
 </html>

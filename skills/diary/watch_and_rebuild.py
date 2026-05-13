@@ -4,19 +4,19 @@ watch_and_rebuild.py — file watcher for /hams:diary edit mode
 
 Polls a single source file's mtime and re-runs the appropriate build step
 when it changes. Designed for the worktree-based edit flow where the user
-edits `_src/{slug}.{ext}` and expects `posts/{slug}.html` to update.
+edits `_src/{slug}.{ext}` and expects `posts/{postId}/{slug}.html` to update.
 
 Usage:
     python watch_and_rebuild.py \
         --src   _src/msa-k8s-websocket.html \
-        --dst   posts/msa-k8s-websocket.html \
+        --dst   posts/1/msa-k8s-websocket.html \
         --engine html \
         --title "MSA · K8s · WebSocket 통합" \
         [--no-theme]
 
     python watch_and_rebuild.py \
         --src   _src/lecture-1.md \
-        --dst   posts/lecture-1.html \
+        --dst   posts/2/lecture-1.html \
         --engine md \
         --frame _post-frame.html \
         --title "Lecture 1" --category 강의 --date 2026-04-26 \

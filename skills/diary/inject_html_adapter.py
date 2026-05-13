@@ -12,8 +12,9 @@ a transformed copy that:
   - Injects a floating navigation bar (back to blog + theme toggle) that
     sits above the inverted region (z-index: 2147483647)
   - Persists theme via localStorage('blog-theme'), shared with the host blog
-  - Optionally appends a giscus comments block before </body> when all four
-    --comments-* args are provided
+
+Output paths are posts/{id}/{slug}.html, so the floating bar back-links go
+two levels up (../../index.html).
 
 Usage:
     python inject_html_adapter.py --src <input.html> --dst <output.html> --title "..."
@@ -40,7 +41,7 @@ ADAPTER_STYLE_FULL = r"""
 
   /* Allow page to grow naturally — many simulators set
      html, body { height:100%; overflow:hidden } to lock viewport. The adapter
-     overrides this so floating bar + appended comments are reachable via scroll. */
+     overrides this so floating bar is reachable via scroll. */
   html, body {
     height: auto !important;
     min-height: 100% !important;
@@ -197,10 +198,10 @@ def make_bar(title: str, with_theme: bool) -> str:
     return f'''
 <!-- ======= OSD floating bar (injected) ======= -->
 <div id="osd-bar" role="navigation" aria-label="블로그 네비게이션">
-  <a href="../index.html" class="osd-bar__brand" title="블로그 홈">◆ Diary</a>
+  <a href="../../index.html" class="osd-bar__brand" title="블로그 홈">◆ Diary</a>
   <div class="osd-bar__title">{title}</div>
   <div class="osd-bar__actions">
-    <a href="../index.html">← 목록</a>
+    <a href="../../index.html">← 목록</a>
     {theme_btn}
   </div>
 </div>
@@ -294,105 +295,6 @@ def detect_source_theme(html: str) -> str:
     return 'dark'
 
 
-GISCUS_MARKER_START = '<!-- hamstern:comments:start -->'
-GISCUS_MARKER_END = '<!-- hamstern:comments:end -->'
-
-
-def make_giscus_block(repo: str, repo_id: str, category: str, category_id: str,
-                      mapping: str = 'pathname', theme: str = 'preferred_color_scheme',
-                      lang: str = 'ko') -> str:
-    """Build the giscus comments block.
-
-    Note: the `theme` parameter is kept for API compatibility but ignored — the
-    actual theme is decided at runtime from localStorage('blog-theme') /
-    data-osd-theme so the iframe always matches the blog (not the OS).
-    Design: option C — small uppercase '토론' header, border-top, subtle
-    dark/light tinted panel, max-width 800px.
-    """
-    return f'''
-  {GISCUS_MARKER_START}
-  <style id="osd-comments-style">
-    .osd-comments {{
-      max-width: 800px;
-      margin: 56px auto 40px;
-      padding: 28px 24px 32px;
-      border-top: 1px solid rgba(127,127,127,0.18);
-      border-radius: 8px;
-    }}
-    html[data-osd-theme="light"] .osd-comments {{
-      background: rgba(0,0,0,0.025);
-      border-top-color: rgba(0,0,0,0.10);
-    }}
-    html[data-osd-theme="dark"] .osd-comments,
-    html:not([data-osd-theme]) .osd-comments {{
-      background: rgba(255,255,255,0.03);
-      border-top-color: rgba(255,255,255,0.08);
-    }}
-    .osd-comments__h {{
-      font: 600 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI",
-            "Pretendard", "Noto Sans KR", sans-serif;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
-      margin: 0 0 16px;
-      color: rgba(127,127,127,0.85);
-    }}
-  </style>
-  <section class="osd-comments" aria-label="comments">
-    <h4 class="osd-comments__h">토론</h4>
-    <div id="osd-giscus-mount"></div>
-  </section>
-  <script>
-    (function(){{
-      function getTheme(){{
-        try {{
-          return localStorage.getItem('blog-theme')
-            || document.documentElement.getAttribute('data-osd-theme')
-            || 'dark';
-        }} catch(e){{ return 'dark'; }}
-      }}
-      function emit(t){{
-        var iframe = document.querySelector('iframe.giscus-frame');
-        if (iframe && iframe.contentWindow) {{
-          iframe.contentWindow.postMessage(
-            {{ giscus: {{ setConfig: {{ theme: t === 'dark' ? 'dark' : 'light' }} }} }},
-            'https://giscus.app'
-          );
-        }}
-      }}
-
-      // (1) script 동적 생성 — 첫 페인트부터 블로그 테마 적용 (OS 무시)
-      var s = document.createElement('script');
-      s.src = 'https://giscus.app/client.js';
-      s.setAttribute('data-repo', '{repo}');
-      s.setAttribute('data-repo-id', '{repo_id}');
-      s.setAttribute('data-category', '{category}');
-      s.setAttribute('data-category-id', '{category_id}');
-      s.setAttribute('data-mapping', '{mapping}');
-      s.setAttribute('data-strict', '0');
-      s.setAttribute('data-reactions-enabled', '1');
-      s.setAttribute('data-emit-metadata', '0');
-      s.setAttribute('data-input-position', 'bottom');
-      s.setAttribute('data-theme', getTheme() === 'light' ? 'light' : 'dark');
-      s.setAttribute('data-lang', '{lang}');
-      s.crossOrigin = 'anonymous';
-      s.async = true;
-      document.getElementById('osd-giscus-mount').appendChild(s);
-
-      // (2) iframe ready 시 한번 더 동기화 (보호장치)
-      window.addEventListener('message', function(e){{
-        if (e.origin !== 'https://giscus.app') return;
-        emit(getTheme());
-      }});
-
-      // (3) 블로그 테마 토글 시 동기화
-      var orig = window.__osdSetTheme || function(){{}};
-      window.__osdSetTheme = function(t){{ orig(t); emit(t); }};
-    }})();
-  </script>
-  {GISCUS_MARKER_END}
-'''
-
-
 FIT_VIEWPORT_STYLE = r"""
 <!-- ======= OSD fit-viewport (max-width override) ======= -->
 <style id="osd-fit-viewport">
@@ -452,7 +354,7 @@ SCALE_UP_SCRIPT = r"""
 """
 
 
-def inject(html: str, title: str, with_theme: bool = True, comments=None,
+def inject(html: str, title: str, with_theme: bool = True,
            fit_mode: str = 'native') -> str:
     """fit_mode: 'native' (default — preserve simulator's own width),
        'viewport' (remove simulator max-width to fill viewport — best for responsive),
@@ -478,25 +380,6 @@ def inject(html: str, title: str, with_theme: bool = True, comments=None,
     if new2 == new:
         new2 = '<body>' + body_payload + new + '</body>'
 
-    # Optional giscus comments — emit only when 4 values all present (idempotent)
-    if comments and all(comments.get(k) for k in ('repo', 'repo_id', 'category', 'category_id')):
-        new2 = re.sub(
-            re.escape(GISCUS_MARKER_START) + r'.*?' + re.escape(GISCUS_MARKER_END),
-            '', new2, flags=re.DOTALL,
-        )
-        block = make_giscus_block(
-            repo=comments['repo'],
-            repo_id=comments['repo_id'],
-            category=comments['category'],
-            category_id=comments['category_id'],
-            mapping=comments.get('mapping', 'pathname'),
-            theme=comments.get('theme', 'preferred_color_scheme'),
-            lang=comments.get('lang', 'ko'),
-        )
-        if '</body>' in new2:
-            new2 = new2.replace('</body>', block + '\n</body>', 1)
-        else:
-            new2 = new2 + block
     return new2
 
 
@@ -532,10 +415,6 @@ def main(argv=None):
     ap.add_argument('--dst-dir', help='Destination directory (batch)')
     ap.add_argument('--map', help='JSON file: [{"src":"a.html","dst":"slug.html","title":"..."}, ...]')
     ap.add_argument('--no-theme', action='store_true', help='Skip light/dark adapter, only full-width + bar')
-    ap.add_argument('--comments-repo', help='giscus data-repo (e.g. owner/repo)')
-    ap.add_argument('--comments-repo-id', help='giscus data-repo-id (R_kgDO...)')
-    ap.add_argument('--comments-category', help='giscus data-category (e.g. Announcements)')
-    ap.add_argument('--comments-category-id', help='giscus data-category-id (DIC_kwDO...)')
     ap.add_argument('--fit-viewport', action='store_true',
                     help='Remove simulator max-width to fill viewport (best for responsive layouts)')
     ap.add_argument('--scale-up', action='store_true',
@@ -547,14 +426,6 @@ def main(argv=None):
     fit_mode = 'viewport' if args.fit_viewport else ('scale' if args.scale_up else 'native')
 
     with_theme = not args.no_theme
-    comments = None
-    if all([args.comments_repo, args.comments_repo_id, args.comments_category, args.comments_category_id]):
-        comments = {
-            'repo': args.comments_repo,
-            'repo_id': args.comments_repo_id,
-            'category': args.comments_category,
-            'category_id': args.comments_category_id,
-        }
     jobs = []
 
     if args.map:
@@ -581,7 +452,7 @@ def main(argv=None):
             html = f.read()
         # Per-job override via --map: {"src":..., "dst":..., "title":..., "fit":"viewport|scale|native"}
         job_fit = j.get('fit') or fit_mode
-        out = inject(html, j['title'], with_theme=with_theme, comments=comments, fit_mode=job_fit)
+        out = inject(html, j['title'], with_theme=with_theme, fit_mode=job_fit)
         os.makedirs(os.path.dirname(os.path.abspath(j['dst'])), exist_ok=True)
         with open(j['dst'], 'w', encoding='utf-8') as f:
             f.write(out)
