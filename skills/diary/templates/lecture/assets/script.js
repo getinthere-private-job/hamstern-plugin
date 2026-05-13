@@ -6,14 +6,23 @@
     root.setAttribute('data-theme', n); try { localStorage.setItem('blog-theme', n); } catch(e){}
   });
 
+  function getCategoriesOf(p) {
+    if (Array.isArray(p.categories)) return p.categories;
+    if (p.category) return [p.category];
+    return [];
+  }
+
   var el = document.getElementById('lecture-groups');
   if (!el) return;
   fetch('posts.json', { cache: 'no-store' })
     .then(r => r.json())
     .then(data => {
-      // Group by category, render as syllabus sections
+      // Group by first category (syllabus primary section)
       var groups = {};
-      data.posts.forEach(p => { (groups[p.category] = groups[p.category] || []).push(p); });
+      data.posts.forEach(p => {
+        var cat = getCategoriesOf(p)[0] || '기타';
+        (groups[cat] = groups[cat] || []).push(p);
+      });
       var html = '';
       Object.keys(groups).forEach(cat => {
         html += `<section class="group"><h3 class="group__heading">${cat}</h3><ul class="group__list">`;

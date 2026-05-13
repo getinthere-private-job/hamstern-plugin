@@ -63,7 +63,7 @@ allowed-tools:
 
 > **시뮬레이터 폭 정책 (HTML 엔진 전용)** — 디폴트는 시뮬레이터 자체 `max-width` 보존 (가운데 정렬 또는 풀너비). `--fit-viewport` / `--scale-up` 은 상호 배타. 한 번 publish 시 선택한 모드는 `posts.json[].fit` 에 저장돼 다음 `--rebuild` 때 그대로 재현된다.
 
-`category` 가 비어있으면 AskUserQuestion 으로 선택받는다.
+두 번째 위치 인자는 카테고리 (쉼표 구분 다중 가능). 비어있으면 AskUserQuestion `multiSelect: true` 로 선택받는다.
 
 ### `edit` — 글 고치기
 
@@ -250,7 +250,7 @@ if os.path.exists(p):
    - `shutil.rmtree(f"posts/{postId}")` (디렉토리 비면 — 단일 글당 폴더 1개이므로 항상 삭제됨)
    - `os.remove(f"_src/{id}.{ext}")` (존재할 때만)
    - posts.json `posts[]` 에서 해당 entry 제거 (postId 재정렬은 하지 않음 — ID 영구 유지)
-   - 해당 entry 가 유일한 카테고리 사용자였으면 `categories[]` 에서도 제거
+   - 글로벌 `categories[]` 재계산: 삭제 후 남은 entry 들의 `categories` 의 union 만 유지 (insertion order)
 7. Pagefind 재빌드 (search 활성 시 — 인덱스에 삭제된 페이지가 남으면 안 됨).
 8. 미리보기 서버 시작 + `http://localhost:$PORT/` 브라우저 오픈 → 목록에서 사라진 것 확인.
 9. AskUserQuestion: "사이트에서 삭제 확인됐습니다. push 할까요?"
@@ -314,13 +314,14 @@ if os.path.exists(p):
 
 💡 예시
   /hams:diary publish ./hello.md 일상
+  /hams:diary publish ./hello.md "msa,kafka"                # 다중 카테고리 (쉼표 구분)
   /hams:diary publish ./drafts/ 일상 --overwrite
   /hams:diary publish ./사이트.html 기술 --no-theme
-  /hams:diary publish ./post.md 일상 --profile diary       # 1회 임시 override
+  /hams:diary publish ./post.md 일상 --profile diary        # 1회 임시 override
   /hams:diary edit hello-world
-  /hams:diary edit 5                                       # 숫자 ID 도 가능
-  /hams:diary delete 5                                     # postId=5 삭제
-  /hams:diary delete "MSA Kubernetes"                      # 제목 유사 매칭
+  /hams:diary edit 5                                        # 숫자 ID 도 가능
+  /hams:diary delete 5                                      # postId=5 삭제
+  /hams:diary delete "MSA Kubernetes"                       # 제목 유사 매칭
   /hams:diary config profile add tech https://github.com/me/tech-blog.git
   /hams:diary config profile use tech
   /hams:diary config search on
@@ -380,11 +381,16 @@ if os.path.exists(p):
   "engine": "md" | "html",          # 처리 엔진
   "slug": "kebab-case-id",
   "title": "추출된 제목",
-  "category": "<인자 또는 추론>",
+  "categories": ["msa", "kafka"],  # 항상 배열 (1개여도 ["msa"])
   "tags": [...],
   "summary": "..."
 }
 ```
+
+> **`categories` 입력 규칙**
+> - CLI: `/hams:diary publish ./post.md "msa,kafka"` — 쉼표 구분, 공백 trim, 빈 항목 제거.
+> - AskUserQuestion: 비어있으면 기존 글로벌 카테고리 목록 + "신규 입력" 으로 `multiSelect: true`. 글로벌이 비면 텍스트 1개 입력.
+> - 옛 단일 string `category` 인자도 호환 — 내부적으로 `[category]` 로 변환.
 
 ### 모드별 처리
 
@@ -412,7 +418,7 @@ Get-ChildItem -LiteralPath $src -Filter *.html | ForEach-Object {
 - **MD**: frontmatter(`---` 사이) 우선, 없으면 첫 H1 → title, 첫 문단 → summary, 헤딩들 → tags
 - **HTML**: `<title>` 태그 → title, `<meta name="description">` → summary, 첫 H1 → fallback title, body 안 헤딩들 → tags
 - **slug**: 파일명 → kebab-case (한글은 PowerShell 단계에서 ASCII slug 로 변환됨)
-- **category**: CLI 인자 우선, 없으면 AskUserQuestion 으로 사용자에게 묻기 (기존 카테고리 + 신규)
+- **categories**: CLI 인자 우선 (쉼표 구분 — 위 규칙 참조), 없으면 AskUserQuestion `multiSelect: true` 로 (기존 글로벌 + "신규 입력")
 
 ---
 
@@ -484,7 +490,7 @@ touch .nojekyll  # GitHub Pages 가 _underscore 폴더를 무시하지 않도록
   "id": "kebab-slug",
   "title": "...",
   "date": "YYYY-MM-DD",
-  "category": "...",
+  "categories": ["msa", "kafka"],
   "summary": "...",
   "filename": "posts/1/kebab-slug.html",
   "tags": ["..."],
@@ -495,6 +501,12 @@ touch .nojekyll  # GitHub Pages 가 _underscore 폴더를 무시하지 않도록
 }
 ```
 
+**`categories` 호환성 규칙**
+- 새 entry 는 항상 `categories: [...]` 배열로 저장. 단일이어도 `["msa"]`.
+- 옛 entry 가 `category: "msa"` 만 가지고 있으면 다음 publish/edit/--rebuild 시 자동 마이그레이션:
+  `entry['categories'] = [entry.pop('category')]`. 정규화 후 글로벌 `categories[]` 도 갱신.
+- 사이트 JS (template 의 `script.js`) 는 항상 `entry.categories ?? (entry.category ? [entry.category] : [])` 로 정규화해서 읽음. 첫 카테고리가 라벨/아이콘의 기본값.
+
 **`postId` 부여 규칙**
 - 신규 글의 `postId` = `max(p['postId'] for p in posts) + 1` (없으면 1). **재사용 금지** — 삭제된 ID 도 다시 쓰지 않는다 (URL 안정성).
 - `filename` 은 항상 `posts/{postId}/{id}.html` 로 통일.
@@ -502,7 +514,7 @@ touch .nojekyll  # GitHub Pages 가 _underscore 폴더를 무시하지 않도록
 
 > **`originalFilename` 마이그레이션** — 기존 항목에 이 필드가 없는 경우, 다음 배포·재빌드 시 자동으로 채워진다. 1순위 매칭은 그냥 건너뛰고 2순위(slug)로 폴백되므로 옛 데이터 손상 없음.
 
-`category` 가 `categories[]` 에 없으면 추가.
+**글로벌 `categories[]` 관리** — entry 의 `categories` 의 모든 항목을 글로벌 `categories[]` 에 union (첫 등장 순서 유지). 삭제 시 다른 글에서 더 이상 사용 안 하는 카테고리만 글로벌 배열에서 제거.
 
 ---
 
@@ -515,9 +527,11 @@ touch .nojekyll  # GitHub Pages 가 _underscore 폴더를 무시하지 않도록
 mkdir -p "posts/${postId}"
 
 # 마크다운 → HTML 변환 (기존 변환 규칙 그대로, 인라인 Python markdown 또는 정규식)
-# 변환된 HTML 을 _post-frame.html 의 {{POST_HTML}} 자리에 치환
+# 변환된 HTML 을 _post-frame.html 의 {{POST_HTML}} 자리에 치환.
+# {{POST_CATEGORY}} 는 categories 의 첫 번째 항목만 표시 (글 본문 헤더는 간결하게).
+PRIMARY_CAT="${CATEGORIES[0]:-}"
 sed -e "s|{{POST_TITLE}}|${TITLE}|g" \
-    -e "s|{{POST_CATEGORY}}|${CAT}|g" \
+    -e "s|{{POST_CATEGORY}}|${PRIMARY_CAT}|g" \
     -e "s|{{POST_DATE}}|${DATE}|g" \
     -e "s|{{POST_HTML}}|${BODY_HTML}|g" \
     -e "s|{{BLOG_TITLE}}|${BLOG_TITLE}|g" \
@@ -914,9 +928,16 @@ import json, sys
 p = 'posts.json'
 d = json.load(open(p, encoding='utf-8'))
 d['posts'] = [x for x in d['posts'] if x.get('postId') != ${postId}]
-# 카테고리 정리
-used = {x['category'] for x in d['posts']}
-d['categories'] = [c for c in d['categories'] if c in used]
+# 카테고리 정리 (categories 배열 union, insertion order)
+def cats_of(x):
+    if isinstance(x.get('categories'), list): return x['categories']
+    return [x['category']] if x.get('category') else []
+used, seen = [], set()
+for x in d['posts']:
+    for c in cats_of(x):
+        if c not in seen:
+            seen.add(c); used.append(c)
+d['categories'] = used
 json.dump(d, open(p, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
 "
 
@@ -990,15 +1011,17 @@ json.dump(d, open(p, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
 - [ ] `cfg['profiles'][name]` 검증 (없으면 에러 종료: "프로파일 없음. /hams:diary config profile list 로 확인")
 - [ ] 활성 프로파일에서 PROFILE_NAME, REPO_URL, OWNER, NAME, PAGES_URL, TEMPLATE, BLOG_TITLE, FEATURES, LOCAL_DIR, WORKTREE_DIR 결정 (0-5)
 - [ ] **JOBS 배열 구성** — 단일/디렉토리/글롭 분기, 한글 파일명 PowerShell 폴백
-- [ ] 각 job 메타 추출 (title/summary/tags/slug/category, **originalFilename**)
-- [ ] category 미결정시 AskUserQuestion
+- [ ] 각 job 메타 추출 (title/summary/tags/slug/categories, **originalFilename**)
+- [ ] **categories 정규화** — CLI 인자 (쉼표 구분 → 배열), 단일 string 도 호환. 비어있으면 AskUserQuestion `multiSelect: true` 로 기존 + "신규 입력"
 - [ ] LOCAL_DIR clone/pull
 - [ ] WORKTREE_DIR worktree add (`BR=post-preview-${TS}`)
 - [ ] 첫 배포 판단 (index.html 부재 또는 .diary-meta.json template 다름) → 템플릿 복사 + {{BLOG_*}} 치환 + .nojekyll
 - [ ] BLOG_TITLE 등 미설정시 AskUserQuestion → P에 저장
 - [ ] posts.json 로드 (없으면 빈 구조)
 - [ ] **postId 마이그레이션** — 기존 entry 에 postId 없으면 현재 배열 순서대로 1, 2, 3... 부여 (이미 부여된 ID 는 보존)
-- [ ] **각 job: 3단계 매칭** (originalFilename → slug → 제목 유사도 ≥0.85+같은 engine), 매칭 발견 시 기존 postId/slug 재사용. `--overwrite` 미설정이면 skip, 설정이면 in-place 교체. 매칭 없음이면 `max(postId)+1` 부여 후 신규 삽입.
+- [ ] **categories 마이그레이션** — 기존 entry 에 옛 단일 `category` 만 있으면 `entry['categories'] = [entry.pop('category')]` 로 변환
+- [ ] **각 job: 3단계 매칭** (originalFilename → slug → 제목 유사도 ≥0.85+같은 engine), 매칭 발견 시 기존 postId/slug 재사용. `--overwrite` 미설정이면 skip, 설정이면 in-place 교체 (categories 갱신). 매칭 없음이면 `max(postId)+1` 부여 후 신규 삽입.
+- [ ] **글로벌 categories[] 갱신** — entry.categories 의 모든 항목을 글로벌 `categories[]` 에 union (insertion order)
 - [ ] posts.json 워크트리에 Write
 - [ ] **각 job 실행**:
   - `mkdir -p posts/{postId}/`
@@ -1022,6 +1045,7 @@ json.dump(d, open(p, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
 - [ ] posts.json 로드 → 대상 entries 결정 (slug / postId / all / `--category X`)
   - 빈 결과 → "대상 없음" 안내 후 종료
 - [ ] **postId 마이그레이션** — 기존 entry 에 postId 없으면 현재 배열 순서대로 부여
+- [ ] **categories 마이그레이션** — 옛 `category` 만 있으면 `categories: [category]` 로 변환 + 글로벌 `categories[]` union
 - [ ] `all` 모드면 AskUserQuestion 으로 "총 N개 재빌드합니다. 계속?" 확인
 - [ ] 첫 배포 판단 → 템플릿 다시 입힘
 - [ ] **각 entry 처리**:
